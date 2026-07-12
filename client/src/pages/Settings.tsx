@@ -1,52 +1,33 @@
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { useOfflineStorage } from '@/hooks/useOfflineStorage';
-import { useNotificationManager } from '@/hooks/useNotificationManager';
-import { Bell, Wifi, WifiOff, Trash2 } from 'lucide-react';
+import { useLocation } from 'wouter';
+import { useAuth } from '@/contexts/AuthContext';
+import { ArrowLeft, Wifi, WifiOff, Bell, Trash2, User, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 
-/**
- * Settings Page - Configurações e testes
- */
 export default function Settings() {
-  const { getDays, saveDays } = useOfflineStorage();
-  const { requestNotificationPermission, checkAndSendNotifications } =
-    useNotificationManager();
-
+  const { user, signOut, isDirector, isAdmin } = useAuth();
+  const [, setLocation] = useLocation();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [swStatus, setSwStatus] = useState<string>('Verificando...');
-  const [cacheSize, setCacheSize] = useState<string>('0 MB');
+  const [swStatus, setSwStatus] = useState('Verificando...');
+  const [cacheSize, setCacheSize] = useState('0 MB');
 
   useEffect(() => {
-    // Verificar status online/offline
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
-
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Verificar Service Worker
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker
-        .getRegistrations()
-        .then((registrations) => {
-          if (registrations.length > 0) {
-            setSwStatus('✅ Service Worker ativo');
-          } else {
-            setSwStatus('⚠️ Service Worker não registrado');
-          }
-        })
-        .catch(() => setSwStatus('❌ Erro ao verificar Service Worker'));
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        setSwStatus(regs.length > 0 ? '✅ Ativo' : '⚠️ Não registrado');
+      }).catch(() => setSwStatus('❌ Erro'));
     } else {
-      setSwStatus('❌ Service Worker não suportado');
+      setSwStatus('❌ Não suportado');
     }
 
-    // Calcular tamanho do cache
     if ('storage' in navigator && 'estimate' in navigator.storage) {
-      navigator.storage.estimate().then((estimate) => {
-        const usedMB = ((estimate.usage || 0) / 1024 / 1024).toFixed(2);
-        setCacheSize(`${usedMB} MB`);
+      navigator.storage.estimate().then(est => {
+        setCacheSize(`${((est.usage || 0) / 1024 / 1024).toFixed(2)} MB`);
       });
     }
 
@@ -56,179 +37,141 @@ export default function Settings() {
     };
   }, []);
 
-  const handleRequestNotifications = async () => {
-    const granted = await requestNotificationPermission();
-    if (granted) {
-      toast.success('Notificações ativadas!');
-    } else {
-      toast.error('Permissão de notificações recusada');
-    }
+  const handleSignOut = async () => {
+    await signOut();
+    toast.success('Sessão terminada');
+    setLocation('/login');
   };
 
-  const handleTestNotification = async () => {
-    await checkAndSendNotifications();
-    toast.info('Verificação de notificações concluída');
+  const handleClearData = () => {
+    if (!confirm('Apagar todos os dados locais? Esta ação é irreversível.')) return;
+    ['gecko_schedules', 'gecko_activities', 'gecko_demo_user'].forEach(k => localStorage.removeItem(k));
+    toast.success('Dados locais apagados');
+    window.location.reload();
   };
 
   const handleClearCache = async () => {
     if ('caches' in window) {
-      const cacheNames = await caches.keys();
-      for (const name of cacheNames) {
-        await caches.delete(name);
-      }
-      toast.success('Cache limpo com sucesso');
+      const names = await caches.keys();
+      for (const name of names) await caches.delete(name);
       setCacheSize('0 MB');
+      toast.success('Cache limpo');
     }
   };
 
-  const handleClearData = async () => {
-    if (confirm('Tem a certeza que quer apagar todos os dados?')) {
-      await saveDays([]);
-      toast.success('Dados apagados');
-      // Recarregar página
-      window.location.reload();
+  const handleNotifications = async () => {
+    if (!('Notification' in window)) return toast.error('Notificações não suportadas');
+    const perm = await Notification.requestPermission();
+    if (perm === 'granted') {
+      new Notification('🦎 Campamento Gecko', { body: 'Notificações ativadas!' });
+      toast.success('Notificações ativadas!');
+    } else {
+      toast.error('Permissão recusada');
     }
   };
+
+  const roleConfig = {
+    director: { label: 'Director', emoji: '🎯', color: 'text-primary bg-primary/15 border-primary/30' },
+    monitor: { label: 'Monitor', emoji: '👤', color: 'text-accent bg-accent/15 border-accent/30' },
+    admin: { label: 'Admin', emoji: '⚙️', color: 'text-purple-400 bg-purple-400/15 border-purple-400/30' },
+  };
+  const role = roleConfig[user?.role || 'monitor'];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-cream via-white to-muted pb-8">
-      {/* Header */}
-      <header className="sticky top-0 z-40 border-b-2 border-warm-tan bg-white/95 backdrop-blur-sm shadow-sm">
-        <div className="container mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold text-forest-green" style={{ fontFamily: "'Playfair Display', serif" }}>
-            Configurações
-          </h1>
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-3 flex items-center gap-3">
+          <button onClick={() => setLocation('/')} className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <h1 className="font-bold text-foreground text-lg">⚙️ Configurações</h1>
         </div>
       </header>
 
-      {/* Content */}
-      <div className="container mx-auto px-4 py-6 space-y-6">
-        {/* Status Section */}
-        <Card className="p-6 border-2 border-warm-tan">
-          <h2 className="text-xl font-bold text-charcoal mb-4">Status da Aplicação</h2>
-
-          <div className="space-y-3">
-            {/* Online Status */}
-            <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-              <div className="flex items-center gap-2">
-                {isOnline ? (
-                  <Wifi className="h-5 w-5 text-green-500" />
-                ) : (
-                  <WifiOff className="h-5 w-5 text-red-500" />
-                )}
-                <span className="font-semibold">Conexão</span>
-              </div>
-              <span className={isOnline ? 'text-green-600' : 'text-red-600'}>
-                {isOnline ? 'Online' : 'Offline'}
-              </span>
+      <div className="container mx-auto px-4 py-6 max-w-md space-y-4">
+        {/* User Profile */}
+        <div className="gecko-card border-primary/20 animate-slide-up">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-14 h-14 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-2xl">
+              🦎
             </div>
-
-            {/* Service Worker Status */}
-            <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-              <span className="font-semibold">Service Worker</span>
-              <span className="text-sm">{swStatus}</span>
-            </div>
-
-            {/* Cache Size */}
-            <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-              <span className="font-semibold">Tamanho do Cache</span>
-              <span className="text-sm">{cacheSize}</span>
+            <div>
+              <p className="font-bold text-foreground">{user?.name || 'Utilizador'}</p>
+              <p className="text-sm text-muted-foreground">{user?.email}</p>
+              <span className={`gecko-badge border mt-1 text-xs ${role.color}`}>{role.emoji} {role.label}</span>
             </div>
           </div>
-        </Card>
+          {(isDirector() || isAdmin()) && (
+            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/20">
+              <Shield className="w-4 h-4 text-primary flex-shrink-0" />
+              <p className="text-xs text-muted-foreground">
+                {isDirector() ? 'Podes criar, editar e apagar cronogramas e atividades.' : 'Tens acesso total à plataforma.'}
+              </p>
+            </div>
+          )}
+        </div>
 
-        {/* Notifications Section */}
-        <Card className="p-6 border-2 border-warm-tan">
-          <h2 className="text-xl font-bold text-charcoal mb-4 flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            Notificações
+        {/* App Status */}
+        <div className="gecko-card animate-slide-up" style={{ animationDelay: '50ms' }}>
+          <h2 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+            <Wifi className="w-4 h-4 text-primary" /> Status da Aplicação
           </h2>
-
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Receba notificações 10 minutos antes de cada atividade
-            </p>
-
-            <div className="flex gap-2">
-              <Button
-                onClick={handleRequestNotifications}
-                className="flex-1 bg-forest-green hover:bg-forest-green/90"
-              >
-                Ativar Notificações
-              </Button>
-
-              <Button
-                onClick={handleTestNotification}
-                variant="outline"
-                className="flex-1"
-              >
-                Testar Notificações
-              </Button>
-            </div>
-
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-900">
-              <p>
-                💡 <strong>Dica:</strong> Permita notificações no seu navegador para receber alertas de atividades.
-              </p>
-            </div>
+          <div className="space-y-2">
+            {[
+              { label: 'Conexão', value: isOnline ? 'Online' : 'Offline', icon: isOnline ? <Wifi className="w-4 h-4 text-green-400" /> : <WifiOff className="w-4 h-4 text-red-400" />, valueColor: isOnline ? 'text-green-400' : 'text-red-400' },
+              { label: 'Service Worker', value: swStatus, icon: null, valueColor: 'text-foreground' },
+              { label: 'Cache', value: cacheSize, icon: null, valueColor: 'text-foreground' },
+              { label: 'Supabase', value: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'Configurado ✅' : 'Modo Demo 🧪', icon: null, valueColor: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'text-green-400' : 'text-yellow-400' },
+            ].map(({ label, value, icon, valueColor }) => (
+              <div key={label} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+                <div className="flex items-center gap-2">
+                  {icon}
+                  <span className="text-sm text-muted-foreground">{label}</span>
+                </div>
+                <span className={`text-sm font-medium ${valueColor}`}>{value}</span>
+              </div>
+            ))}
           </div>
-        </Card>
+        </div>
 
-        {/* Storage Section */}
-        <Card className="p-6 border-2 border-warm-tan">
-          <h2 className="text-xl font-bold text-charcoal mb-4">Armazenamento</h2>
+        {/* Notifications */}
+        <div className="gecko-card animate-slide-up" style={{ animationDelay: '100ms' }}>
+          <h2 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+            <Bell className="w-4 h-4 text-primary" /> Notificações
+          </h2>
+          <p className="text-xs text-muted-foreground mb-3">Recebe alertas 10 minutos antes de cada atividade.</p>
+          <button onClick={handleNotifications} className="w-full gecko-btn-primary text-sm">
+            🔔 Ativar Notificações
+          </button>
+        </div>
 
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Gerencie o cache e os dados armazenados localmente
-            </p>
-
-            <div className="flex gap-2">
-              <Button
-                onClick={handleClearCache}
-                variant="outline"
-                className="flex-1"
-              >
-                Limpar Cache
-              </Button>
-
-              <Button
-                onClick={handleClearData}
-                variant="destructive"
-                className="flex-1"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Apagar Dados
-              </Button>
-            </div>
-
-            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-900">
-              <p>
-                ⚠️ <strong>Aviso:</strong> Apagar dados é irreversível. Certifique-se de fazer backup antes.
-              </p>
-            </div>
+        {/* Data */}
+        <div className="gecko-card animate-slide-up" style={{ animationDelay: '150ms' }}>
+          <h2 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+            <Trash2 className="w-4 h-4 text-destructive" /> Dados Locais
+          </h2>
+          <div className="space-y-2">
+            <button onClick={handleClearCache} className="w-full py-2 rounded-lg border border-border text-muted-foreground text-sm hover:bg-muted transition-colors">
+              Limpar Cache
+            </button>
+            <button onClick={handleClearData} className="w-full py-2 rounded-lg border border-destructive/30 text-destructive text-sm hover:bg-destructive/10 transition-colors">
+              Apagar Todos os Dados Locais
+            </button>
           </div>
-        </Card>
+        </div>
 
-        {/* Info Section */}
-        <Card className="p-6 border-2 border-warm-tan">
-          <h2 className="text-xl font-bold text-charcoal mb-4">Sobre</h2>
+        {/* Logout */}
+        <button
+          onClick={handleSignOut}
+          className="w-full py-3 rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground transition-colors text-sm font-medium animate-slide-up"
+          style={{ animationDelay: '200ms' }}
+        >
+          🚪 Terminar Sessão
+        </button>
 
-          <div className="space-y-2 text-sm text-muted-foreground">
-            <p>
-              <strong>Camp Daily Scheduler</strong> v1.0.0
-            </p>
-            <p>
-              Aplicação PWA para gerir esquemas diários de acampamento com suporte offline e notificações.
-            </p>
-            <p className="pt-2">
-              ✅ Funciona offline<br />
-              ✅ Notificações automáticas<br />
-              ✅ Sincronização de dados<br />
-              ✅ Compatível com iPhone
-            </p>
-          </div>
-        </Card>
+        <p className="text-center text-xs text-muted-foreground pb-4">
+          Campamento Gecko v2.0.0 • {new Date().getFullYear()}
+        </p>
       </div>
     </div>
   );

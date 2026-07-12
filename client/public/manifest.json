@@ -1,54 +1,21 @@
 {
-  "name": "Camp Daily Scheduler",
-  "short_name": "Camp Scheduler",
-  "description": "Aplicação para gerir esquemas diários de acampamento com notificações offline",
+  "name": "Campamento Gecko",
+  "short_name": "Gecko",
+  "description": "Plataforma de gestão de acampamentos",
   "start_url": "/",
-  "scope": "/",
   "display": "standalone",
+  "background_color": "#0a0f0a",
+  "theme_color": "#84cc16",
   "orientation": "portrait-primary",
-  "theme_color": "#2D5016",
-  "background_color": "#F5F1E8",
+  "categories": [
+    "education",
+    "productivity"
+  ],
   "icons": [
     {
-      "src": "/manus-storage/camp-logo_318861f1.png",
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦎</text></svg>",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/manus-storage/camp-logo_318861f1.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/manus-storage/camp-logo_318861f1.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/manus-storage/camp-hero-bg_73de6c71.jpg",
-      "sizes": "540x720",
-      "type": "image/jpeg",
-      "form_factor": "narrow"
-    }
-  ],
-  "categories": ["productivity", "utilities"],
-  "shortcuts": [
-    {
-      "name": "Novo Dia",
-      "short_name": "Novo Dia",
-      "description": "Criar um novo esquema diário",
-      "url": "/?action=new-day",
-      "icons": [
-        {
-          "src": "/manus-storage/camp-logo_318861f1.png",
-          "sizes": "96x96"
-        }
-      ]
+      "type": "image/svg+xml"
     }
   ]
 }

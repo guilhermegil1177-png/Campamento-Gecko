@@ -1,302 +1,270 @@
-/**
- * Campamento Gecko - Activities Library
- * Biblioteca categorizada de atividades
- */
-import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { ChevronLeft, Plus, Search, X, Check } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
+import type { Activity, ActivityCategory, ActivityDifficulty } from '@/types';
+import { ArrowLeft, Plus, Search, Trash2, X, Save, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 import { nanoid } from 'nanoid';
-import type { Activity } from '@/types';
 
-const CATEGORY_LABELS: Record<string, { label: string; emoji: string; color: string }> = {
-  outdoor: { label: 'Exterior', emoji: '🏕️', color: 'text-gecko-green border-gecko-green/30 bg-gecko-green/10' },
-  indoor: { label: 'Interior', emoji: '🏠', color: 'text-gecko-blue border-gecko-blue/30 bg-gecko-blue/10' },
-  craft: { label: 'Artesanato', emoji: '🎨', color: 'text-gecko-amber border-gecko-amber/30 bg-gecko-amber/10' },
-  sport: { label: 'Desporto', emoji: '⚽', color: 'text-red-400 border-red-400/30 bg-red-400/10' },
-  other: { label: 'Outro', emoji: '✨', color: 'text-purple-400 border-purple-400/30 bg-purple-400/10' },
-};
-
-const SAMPLE_ACTIVITIES: Activity[] = [
-  {
-    id: nanoid(), titulo: 'Rota de Pilones', descricao: 'Rota de montanha com descida de pilones naturais',
-    categoria: 'outdoor', instrucoes: 'Briefing obrigatório. Grupos de 10-12 miúdos com monitor.',
-    materiais: ['Água', 'Mochila', 'Calçado adequado', 'Protetor solar'],
-    duracao: 240, dificuldade: 'dificil', criado_por: 'system',
-    created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-  },
-  {
-    id: nanoid(), titulo: 'Velada das Estrelas', descricao: 'Histórias e relaxamento sob as estrelas',
-    categoria: 'outdoor', instrucoes: 'Levar mantas. Música suave de fundo.',
-    materiais: ['Mantas', 'Lanternas', 'Música'],
-    duracao: 60, dificuldade: 'facil', criado_por: 'system',
-    created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-  },
-  {
-    id: nanoid(), titulo: 'Jogos de Mesa', descricao: 'Jogos de tabuleiro e cartas em grupo',
-    categoria: 'indoor', instrucoes: 'Dividir em grupos de 4-6 pessoas.',
-    materiais: ['Jogos de mesa', 'Cartas'],
-    duracao: 90, dificuldade: 'facil', criado_por: 'system',
-    created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-  },
-  {
-    id: nanoid(), titulo: 'Pulseiras de Amizade', descricao: 'Fazer pulseiras com fios coloridos',
-    categoria: 'craft', instrucoes: 'Preparar fios com antecedência. Tutorial simples.',
-    materiais: ['Fios coloridos', 'Tesouras', 'Agulhas'],
-    duracao: 60, dificuldade: 'facil', criado_por: 'system',
-    created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-  },
-  {
-    id: nanoid(), titulo: 'Torneio de Futebol', descricao: 'Mini torneio de futebol entre grupos',
-    categoria: 'sport', instrucoes: 'Equipas de 5. Jogos de 10 minutos.',
-    materiais: ['Bolas', 'Coletes', 'Balizas'],
-    duracao: 120, dificuldade: 'medio', criado_por: 'system',
-    created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-  },
+const DEMO_ACTIVITIES: Activity[] = [
+  { id: 'a1', title: 'Descenso de Pilones', description: 'Descida pelas piscinas naturais de Pilones em Jerte. Uma experiência única na natureza.', category: 'outdoor', instructions: '1. Briefing de segurança\n2. Divisão em grupos de 10-12\n3. Descida supervisionada pelos monitores', video_url: '', image_url: '', materials: ['Roupa para molhar', 'Toalha', 'Calçado aquático'], duration_minutes: 180, difficulty: 'medium', created_by: 'demo-director', created_at: '', updated_at: '' },
+  { id: 'a2', title: 'Trilha na Natureza', description: 'Percurso pedestre de 8km pela serra com vista panorâmica.', category: 'outdoor', instructions: 'Seguir a trilha marcada. Monitores na frente e na retaguarda.', video_url: '', image_url: '', materials: ['Botas de caminhada', 'Mochila', 'Água (2L)', 'Protetor solar'], duration_minutes: 240, difficulty: 'hard', created_by: 'demo-director', created_at: '', updated_at: '' },
+  { id: 'a3', title: 'Olimpíadas do Campo', description: 'Jogos olímpicos inter-equipas com várias provas desportivas.', category: 'sport', instructions: 'Dividir em 4 equipas. Rotação por 6 provas. Pontuação acumulativa.', video_url: '', image_url: '', materials: ['Bolas variadas', 'Cones', 'Fita métrica', 'Quadro de pontuação'], duration_minutes: 120, difficulty: 'easy', created_by: 'demo-director', created_at: '', updated_at: '' },
+  { id: 'a4', title: 'Oficina de Artesanato', description: 'Criação de pulseiras, colares e pinturas em pedras.', category: 'craft', instructions: 'Preparar materiais nas mesas. Cada acampado escolhe a sua atividade.', video_url: '', image_url: '', materials: ['Fios coloridos', 'Miçangas', 'Pedras', 'Tintas acrílicas', 'Pincéis'], duration_minutes: 90, difficulty: 'easy', created_by: 'demo-director', created_at: '', updated_at: '' },
+  { id: 'a5', title: 'Jogo de Equipa - Capturar a Bandeira', description: 'Clássico jogo de estratégia e trabalho em equipa no campo.', category: 'sport', instructions: '2 equipas. Campo dividido ao meio. Objetivo: capturar a bandeira adversária.', video_url: '', image_url: '', materials: ['2 Bandeiras', 'Cones para delimitar', 'Coletes diferenciadores'], duration_minutes: 60, difficulty: 'medium', created_by: 'demo-director', created_at: '', updated_at: '' },
+  { id: 'a6', title: 'Cinema ao Ar Livre', description: 'Sessão de cinema ou documentário projetado no exterior.', category: 'indoor', instructions: 'Preparar projetor e ecrã. Distribuir pipocas. Escolher filme adequado à faixa etária.', video_url: '', image_url: '', materials: ['Projetor', 'Ecrã', 'Pipocas', 'Cobertores'], duration_minutes: 120, difficulty: 'easy', created_by: 'demo-director', created_at: '', updated_at: '' },
 ];
 
+const CATEGORY_CONFIG: Record<ActivityCategory, { label: string; emoji: string; color: string }> = {
+  outdoor: { label: 'Outdoor', emoji: '🏕️', color: 'text-green-400 bg-green-400/10 border-green-400/30' },
+  indoor: { label: 'Indoor', emoji: '🏠', color: 'text-blue-400 bg-blue-400/10 border-blue-400/30' },
+  craft: { label: 'Artesanato', emoji: '🎨', color: 'text-purple-400 bg-purple-400/10 border-purple-400/30' },
+  sport: { label: 'Desporto', emoji: '⚽', color: 'text-orange-400 bg-orange-400/10 border-orange-400/30' },
+};
+
+const DIFFICULTY_CONFIG: Record<ActivityDifficulty, { label: string; color: string }> = {
+  easy: { label: 'Fácil', color: 'text-green-400' },
+  medium: { label: 'Médio', color: 'text-yellow-400' },
+  hard: { label: 'Difícil', color: 'text-red-400' },
+};
+
 export default function Activities() {
-  const { isDirector } = useAuth();
+  const { user, isDirector } = useAuth();
   const [, setLocation] = useLocation();
-  const [activities, setActivities] = useState<Activity[]>(SAMPLE_ACTIVITIES);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filterCat, setFilterCat] = useState<string>('all');
-  const [showForm, setShowForm] = useState(false);
+  const [filterCat, setFilterCat] = useState<ActivityCategory | 'all'>('all');
   const [selected, setSelected] = useState<Activity | null>(null);
-  const [newActivity, setNewActivity] = useState({
-    titulo: '', descricao: '', categoria: 'outdoor' as Activity['categoria'],
-    instrucoes: '', duracao: '', dificuldade: 'facil' as Activity['dificuldade'],
-    materiais: '',
-  });
+  const [showForm, setShowForm] = useState(false);
 
-  const filtered = activities.filter(a => {
-    const matchSearch = a.titulo.toLowerCase().includes(search.toLowerCase()) ||
-      a.descricao.toLowerCase().includes(search.toLowerCase());
-    const matchCat = filterCat === 'all' || a.categoria === filterCat;
-    return matchSearch && matchCat;
-  });
+  // New activity form
+  const [form, setForm] = useState({ title: '', description: '', category: 'outdoor' as ActivityCategory, instructions: '', materials: '', duration: '60', difficulty: 'medium' as ActivityDifficulty });
 
-  const handleCreate = () => {
-    if (!newActivity.titulo.trim()) { toast.error('Título obrigatório'); return; }
-    const activity: Activity = {
+  const isDemo = !import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+  useEffect(() => { loadActivities(); }, []);
+
+  const loadActivities = async () => {
+    setIsLoading(true);
+    try {
+      if (isDemo) {
+        const stored = localStorage.getItem('gecko_activities');
+        setActivities(stored ? JSON.parse(stored) : DEMO_ACTIVITIES);
+        if (!stored) localStorage.setItem('gecko_activities', JSON.stringify(DEMO_ACTIVITIES));
+      } else {
+        const { data } = await supabase.from('activities').select('*').order('created_at', { ascending: false });
+        if (data) setActivities(data);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const saveToStorage = (updated: Activity[]) => {
+    if (isDemo) localStorage.setItem('gecko_activities', JSON.stringify(updated));
+  };
+
+  const createActivity = async () => {
+    if (!form.title.trim()) return toast.error('Título obrigatório');
+    const newA: Activity = {
       id: nanoid(),
-      titulo: newActivity.titulo,
-      descricao: newActivity.descricao,
-      categoria: newActivity.categoria,
-      instrucoes: newActivity.instrucoes,
-      materiais: newActivity.materiais.split(',').map(m => m.trim()).filter(Boolean),
-      duracao: parseInt(newActivity.duracao) || undefined,
-      dificuldade: newActivity.dificuldade,
-      criado_por: 'user',
+      title: form.title,
+      description: form.description,
+      category: form.category,
+      instructions: form.instructions,
+      materials: form.materials ? form.materials.split(',').map(m => m.trim()).filter(Boolean) : [],
+      duration_minutes: parseInt(form.duration) || 60,
+      difficulty: form.difficulty,
+      created_by: user?.id || 'demo',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    setActivities(prev => [activity, ...prev]);
+    if (!isDemo) {
+      const { data, error } = await supabase.from('activities').insert({ ...newA }).select().single();
+      if (error) return toast.error(error.message);
+      newA.id = data.id;
+    }
+    const updated = [newA, ...activities];
+    setActivities(updated); saveToStorage(updated);
+    setForm({ title: '', description: '', category: 'outdoor', instructions: '', materials: '', duration: '60', difficulty: 'medium' });
     setShowForm(false);
-    setNewActivity({ titulo: '', descricao: '', categoria: 'outdoor', instrucoes: '', duracao: '', dificuldade: 'facil', materiais: '' });
-    toast.success('Atividade criada!');
+    toast.success('Atividade criada! 🎉');
   };
 
-  const handleDelete = (id: string) => {
+  const deleteActivity = async (id: string) => {
     if (!confirm('Apagar esta atividade?')) return;
-    setActivities(prev => prev.filter(a => a.id !== id));
+    if (!isDemo) await supabase.from('activities').delete().eq('id', id);
+    const updated = activities.filter(a => a.id !== id);
+    setActivities(updated); saveToStorage(updated);
     if (selected?.id === id) setSelected(null);
     toast.success('Atividade apagada');
   };
 
+  const filtered = activities.filter(a => {
+    const matchSearch = !search || a.title.toLowerCase().includes(search.toLowerCase()) || a.description.toLowerCase().includes(search.toLowerCase());
+    const matchCat = filterCat === 'all' || a.category === filterCat;
+    return matchSearch && matchCat;
+  });
+
   return (
-    <div className="min-h-screen bg-gecko-bg pb-8">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-gecko-border bg-gecko-bg/95 backdrop-blur-sm">
+      <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-3 flex items-center gap-3">
-          <button onClick={() => setLocation('/')} className="rounded-full p-2 hover:bg-gecko-card transition-colors">
-            <ChevronLeft className="h-5 w-5 text-gecko-muted" />
+          <button onClick={() => setLocation('/')} className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
+            <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-xl font-bold text-gecko-green font-playfair">Biblioteca de Atividades</h1>
+          <h1 className="font-bold text-foreground text-lg flex-1">📚 Biblioteca de Atividades</h1>
           {isDirector() && (
-            <Button onClick={() => setShowForm(true)} size="sm" className="ml-auto bg-gecko-green text-gecko-bg">
-              <Plus className="h-4 w-4 mr-1" /> Nova
-            </Button>
+            <button onClick={() => setShowForm(true)} className="gecko-btn-primary text-sm flex items-center gap-1.5">
+              <Plus className="w-4 h-4" /> Nova
+            </button>
           )}
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6 space-y-4">
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gecko-muted" />
-          <Input
-            placeholder="Pesquisar atividades..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pl-9 bg-gecko-card border-gecko-border text-gecko-text placeholder:text-gecko-muted"
-          />
-        </div>
-
-        {/* Category Filter */}
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          <button
-            onClick={() => setFilterCat('all')}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all border ${
-              filterCat === 'all'
-                ? 'bg-gecko-green text-gecko-bg border-gecko-green'
-                : 'border-gecko-border text-gecko-muted hover:border-gecko-green'
-            }`}
-          >
-            Todas ({activities.length})
-          </button>
-          {Object.entries(CATEGORY_LABELS).map(([key, { label, emoji }]) => (
-            <button
-              key={key}
-              onClick={() => setFilterCat(key)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all border ${
-                filterCat === key
-                  ? 'bg-gecko-green text-gecko-bg border-gecko-green'
-                  : 'border-gecko-border text-gecko-muted hover:border-gecko-green'
-              }`}
-            >
-              {emoji} {label}
-            </button>
-          ))}
+      <div className="container mx-auto px-4 py-4 max-w-2xl space-y-4">
+        {/* Search + Filters */}
+        <div className="space-y-2 animate-slide-up">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Pesquisar atividades..."
+              className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {(['all', 'outdoor', 'indoor', 'craft', 'sport'] as const).map(cat => (
+              <button
+                key={cat}
+                onClick={() => setFilterCat(cat)}
+                className={`flex-shrink-0 text-xs px-3 py-1.5 rounded-full border font-medium transition-colors ${
+                  filterCat === cat
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'border-border text-muted-foreground hover:border-primary/50'
+                }`}
+              >
+                {cat === 'all' ? '🔍 Todas' : `${CATEGORY_CONFIG[cat].emoji} ${CATEGORY_CONFIG[cat].label}`}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* New Activity Form */}
-        {showForm && (
-          <Card className="gecko-card p-4 border-gecko-green">
-            <h3 className="font-bold text-gecko-text mb-3">Nova Atividade</h3>
+        {showForm && isDirector() && (
+          <div className="gecko-card border-primary/40 animate-slide-up">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-foreground">Nova Atividade</h2>
+              <button onClick={() => setShowForm(false)} className="p-1 hover:bg-muted rounded-lg text-muted-foreground"><X className="w-4 h-4" /></button>
+            </div>
             <div className="space-y-3">
-              <Input placeholder="Título *" value={newActivity.titulo}
-                onChange={e => setNewActivity(s => ({ ...s, titulo: e.target.value }))}
-                className="bg-gecko-bg border-gecko-border text-gecko-text" />
-              <Input placeholder="Descrição" value={newActivity.descricao}
-                onChange={e => setNewActivity(s => ({ ...s, descricao: e.target.value }))}
-                className="bg-gecko-bg border-gecko-border text-gecko-text" />
-              <select value={newActivity.categoria}
-                onChange={e => setNewActivity(s => ({ ...s, categoria: e.target.value as any }))}
-                className="w-full rounded-md border border-gecko-border bg-gecko-bg text-gecko-text px-3 py-2 text-sm">
-                {Object.entries(CATEGORY_LABELS).map(([k, { label, emoji }]) => (
-                  <option key={k} value={k}>{emoji} {label}</option>
-                ))}
-              </select>
-              <Input placeholder="Instruções" value={newActivity.instrucoes}
-                onChange={e => setNewActivity(s => ({ ...s, instrucoes: e.target.value }))}
-                className="bg-gecko-bg border-gecko-border text-gecko-text" />
-              <Input placeholder="Materiais (separados por vírgula)" value={newActivity.materiais}
-                onChange={e => setNewActivity(s => ({ ...s, materiais: e.target.value }))}
-                className="bg-gecko-bg border-gecko-border text-gecko-text" />
-              <div className="flex gap-2">
-                <Input placeholder="Duração (min)" type="number" value={newActivity.duracao}
-                  onChange={e => setNewActivity(s => ({ ...s, duracao: e.target.value }))}
-                  className="bg-gecko-bg border-gecko-border text-gecko-text" />
-                <select value={newActivity.dificuldade}
-                  onChange={e => setNewActivity(s => ({ ...s, dificuldade: e.target.value as any }))}
-                  className="flex-1 rounded-md border border-gecko-border bg-gecko-bg text-gecko-text px-3 py-2 text-sm">
-                  <option value="facil">🟢 Fácil</option>
-                  <option value="medio">🟡 Médio</option>
-                  <option value="dificil">🔴 Difícil</option>
+              <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Título" className="w-full px-3 py-2 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
+              <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Descrição" rows={2} className="w-full px-3 py-2 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none" />
+              <div className="grid grid-cols-2 gap-2">
+                <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value as ActivityCategory }))} className="px-3 py-2 rounded-lg bg-input border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+                  <option value="outdoor">🏕️ Outdoor</option>
+                  <option value="indoor">🏠 Indoor</option>
+                  <option value="craft">🎨 Artesanato</option>
+                  <option value="sport">⚽ Desporto</option>
+                </select>
+                <select value={form.difficulty} onChange={e => setForm(f => ({ ...f, difficulty: e.target.value as ActivityDifficulty }))} className="px-3 py-2 rounded-lg bg-input border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+                  <option value="easy">✅ Fácil</option>
+                  <option value="medium">⚠️ Médio</option>
+                  <option value="hard">🔴 Difícil</option>
                 </select>
               </div>
+              <input value={form.duration} onChange={e => setForm(f => ({ ...f, duration: e.target.value }))} type="number" placeholder="Duração (minutos)" className="w-full px-3 py-2 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
+              <input value={form.materials} onChange={e => setForm(f => ({ ...f, materials: e.target.value }))} placeholder="Materiais (separados por vírgula)" className="w-full px-3 py-2 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
+              <textarea value={form.instructions} onChange={e => setForm(f => ({ ...f, instructions: e.target.value }))} placeholder="Instruções" rows={3} className="w-full px-3 py-2 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none" />
               <div className="flex gap-2">
-                <Button onClick={handleCreate} className="flex-1 bg-gecko-green text-gecko-bg">
-                  <Check className="h-4 w-4 mr-1" /> Criar
-                </Button>
-                <Button onClick={() => setShowForm(false)} variant="outline" className="flex-1 border-gecko-border text-gecko-text">
-                  <X className="h-4 w-4 mr-1" /> Cancelar
-                </Button>
+                <button onClick={createActivity} className="gecko-btn-primary flex-1 text-sm flex items-center justify-center gap-1.5"><Save className="w-4 h-4" /> Criar</button>
+                <button onClick={() => setShowForm(false)} className="flex-1 py-2 rounded-lg border border-border text-muted-foreground text-sm hover:bg-muted transition-colors">Cancelar</button>
               </div>
             </div>
-          </Card>
+          </div>
         )}
 
         {/* Activity Detail Modal */}
         {selected && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4" onClick={() => setSelected(null)}>
-            <Card className="gecko-card w-full max-w-lg p-6 mb-4" onClick={e => e.stopPropagation()}>
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setSelected(null)}>
+            <div className="gecko-card w-full max-w-lg max-h-[80vh] overflow-y-auto border-primary/40" onClick={e => e.stopPropagation()}>
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <span className={`text-xs px-2 py-1 rounded-full border font-medium ${CATEGORY_LABELS[selected.categoria].color}`}>
-                    {CATEGORY_LABELS[selected.categoria].emoji} {CATEGORY_LABELS[selected.categoria].label}
-                  </span>
-                  <h2 className="text-xl font-bold text-gecko-text mt-2">{selected.titulo}</h2>
-                </div>
-                <button onClick={() => setSelected(null)} className="text-gecko-muted hover:text-gecko-text">
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-              <p className="text-gecko-muted text-sm mb-4">{selected.descricao}</p>
-              {selected.instrucoes && (
-                <div className="mb-3">
-                  <p className="text-xs font-semibold text-gecko-muted uppercase mb-1">Instruções</p>
-                  <p className="text-sm text-gecko-text">{selected.instrucoes}</p>
-                </div>
-              )}
-              {selected.materiais.length > 0 && (
-                <div className="mb-3">
-                  <p className="text-xs font-semibold text-gecko-muted uppercase mb-2">Materiais</p>
-                  <div className="flex flex-wrap gap-2">
-                    {selected.materiais.map((m, i) => (
-                      <span key={i} className="text-xs px-2 py-1 rounded-full bg-gecko-card border border-gecko-border text-gecko-text">{m}</span>
-                    ))}
+                  <div className={`gecko-badge border mb-2 ${CATEGORY_CONFIG[selected.category].color}`}>
+                    {CATEGORY_CONFIG[selected.category].emoji} {CATEGORY_CONFIG[selected.category].label}
                   </div>
+                  <h2 className="font-bold text-foreground text-xl">{selected.title}</h2>
                 </div>
-              )}
-              <div className="flex gap-4 text-xs text-gecko-muted mt-4">
-                {selected.duracao && <span>⏱️ {selected.duracao} min</span>}
-                {selected.dificuldade && (
-                  <span>{selected.dificuldade === 'facil' ? '🟢' : selected.dificuldade === 'medio' ? '🟡' : '🔴'} {selected.dificuldade}</span>
+                <button onClick={() => setSelected(null)} className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground flex-shrink-0"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="space-y-4">
+                {selected.description && <p className="text-sm text-muted-foreground">{selected.description}</p>}
+                <div className="flex gap-4 text-sm">
+                  <span className="flex items-center gap-1">⏱️ <span className="text-foreground font-medium">{selected.duration_minutes}min</span></span>
+                  <span className={`font-medium ${DIFFICULTY_CONFIG[selected.difficulty].color}`}>{DIFFICULTY_CONFIG[selected.difficulty].label}</span>
+                </div>
+                {selected.materials?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Materiais</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selected.materials.map((m, i) => <span key={i} className="gecko-badge bg-muted text-foreground border border-border">{m}</span>)}
+                    </div>
+                  </div>
+                )}
+                {selected.instructions && (
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Instruções</p>
+                    <p className="text-sm text-foreground whitespace-pre-line">{selected.instructions}</p>
+                  </div>
+                )}
+                {isDirector() && (
+                  <button onClick={() => { deleteActivity(selected.id); setSelected(null); }} className="w-full py-2 rounded-lg border border-destructive/30 text-destructive text-sm hover:bg-destructive/10 transition-colors flex items-center justify-center gap-1.5">
+                    <Trash2 className="w-4 h-4" /> Apagar Atividade
+                  </button>
                 )}
               </div>
-            </Card>
+            </div>
           </div>
         )}
 
-        {/* Grid */}
-        {filtered.length === 0 ? (
-          <div className="text-center py-12">
-            <span className="text-4xl block mb-3">🔍</span>
-            <p className="text-gecko-muted">Nenhuma atividade encontrada</p>
+        {/* Activities Grid */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 gap-3">{[1,2,3].map(i => <div key={i} className="h-24 rounded-xl bg-muted animate-pulse" />)}</div>
+        ) : filtered.length === 0 ? (
+          <div className="gecko-card text-center py-10">
+            <p className="text-4xl mb-3">📚</p>
+            <p className="text-muted-foreground">Nenhuma atividade encontrada.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {filtered.map(activity => {
-              const cat = CATEGORY_LABELS[activity.categoria];
+            {filtered.map((a, i) => {
+              const cat = CATEGORY_CONFIG[a.category];
+              const diff = DIFFICULTY_CONFIG[a.difficulty];
               return (
-                <Card
-                  key={activity.id}
-                  className="gecko-card p-4 cursor-pointer"
-                  onClick={() => setSelected(activity)}
+                <button
+                  key={a.id}
+                  onClick={() => setSelected(a)}
+                  className="gecko-card text-left hover:border-primary/50 transition-all animate-slide-up group"
+                  style={{ animationDelay: `${i * 30}ms` }}
                 >
-                  <div className="flex items-start justify-between mb-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${cat.color}`}>
-                      {cat.emoji} {cat.label}
-                    </span>
-                    {isDirector() && (
-                      <button
-                        onClick={e => { e.stopPropagation(); handleDelete(activity.id); }}
-                        className="p-1 rounded hover:bg-red-500/20 text-gecko-muted hover:text-red-400 transition-colors"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    )}
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <span className={`gecko-badge border text-[10px] ${cat.color}`}>{cat.emoji} {cat.label}</span>
+                    <span className={`text-[10px] font-semibold ${diff.color}`}>{diff.label}</span>
                   </div>
-                  <h3 className="font-bold text-gecko-text mb-1">{activity.titulo}</h3>
-                  <p className="text-xs text-gecko-muted line-clamp-2">{activity.descricao}</p>
-                  <div className="flex gap-3 mt-3 text-xs text-gecko-muted">
-                    {activity.duracao && <span>⏱️ {activity.duracao}min</span>}
-                    {activity.dificuldade && (
-                      <span>{activity.dificuldade === 'facil' ? '🟢' : activity.dificuldade === 'medio' ? '🟡' : '🔴'} {activity.dificuldade}</span>
-                    )}
-                    {activity.materiais.length > 0 && <span>📦 {activity.materiais.length} materiais</span>}
-                  </div>
-                </Card>
+                  <h3 className="font-semibold text-foreground text-sm mb-1 group-hover:text-primary transition-colors">{a.title}</h3>
+                  <p className="text-xs text-muted-foreground line-clamp-2">{a.description}</p>
+                  <p className="text-xs text-muted-foreground mt-2">⏱️ {a.duration_minutes}min</p>
+                </button>
               );
             })}
           </div>
         )}
+
+        <p className="text-center text-xs text-muted-foreground pb-4">{filtered.length} atividade{filtered.length !== 1 ? 's' : ''} encontrada{filtered.length !== 1 ? 's' : ''}</p>
       </div>
     </div>
   );

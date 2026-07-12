@@ -1,118 +1,138 @@
-/**
- * Campamento Gecko - Auth Context
- * Gestão de autenticação com Supabase
- */
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import type { User, AuthState } from '@/types';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import type { GeckoUser, UserRole } from '@/types';
 
-interface AuthContextType extends AuthState {
-  signIn: (email: string, password: string) => Promise<{ error?: string }>;
+interface AuthContextType {
+  user: GeckoUser | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   isDirector: () => boolean;
   isAdmin: () => boolean;
+  isMonitor: () => boolean;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Demo user for offline/no-supabase mode
-const DEMO_USER: User = {
-  id: 'demo-user',
-  email: 'demo@campamentogecko.com',
-  nome: 'Demo Director',
+// Demo offline user (when Supabase is not configured)
+const DEMO_USER: GeckoUser = {
+  id: 'demo-director',
+  email: 'director@campgecko.com',
+  name: 'Director Demo',
   role: 'director',
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 };
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    isLoading: true,
-    isAuthenticated: false,
-  });
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<GeckoUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) {
-      // Modo demo sem Supabase
-      setState({ user: DEMO_USER, isLoading: false, isAuthenticated: true });
+    const hasSupabase = !!import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    if (!hasSupabase) {
+      // Demo mode: check localStorage
+      const stored = localStorage.getItem('gecko_demo_user');
+      if (stored) {
+        try { setUser(JSON.parse(stored)); } catch {}
+      }
+      setIsLoading(false);
       return;
     }
 
-    // Verificar sessão existente
+    // Real Supabase auth
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        fetchUserProfile(session.user.id);
+        loadUserProfile(session.user.id);
       } else {
-        setState({ user: null, isLoading: false, isAuthenticated: false });
+        setIsLoading(false);
       }
     });
 
-    // Listener de mudanças de auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        fetchUserProfile(session.user.id);
+        loadUserProfile(session.user.id);
       } else {
-        setState({ user: null, isLoading: false, isAuthenticated: false });
+        setUser(null);
+        setIsLoading(false);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchUserProfile = async (userId: string) => {
+  const loadUserProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('users')
         .select('*')
         .eq('id', userId)
         .single();
-
-      if (error || !data) {
-        setState({ user: null, isLoading: false, isAuthenticated: false });
-        return;
-      }
-
-      setState({ user: data as User, isLoading: false, isAuthenticated: true });
+      setUser(data || null);
     } catch {
-      setState({ user: null, isLoading: false, isAuthenticated: false });
+      setUser(null);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const signIn = async (email: string, password: string) => {
-    if (!isSupabaseConfigured()) {
-      // Demo login
-      if (email === 'demo' || email.includes('gecko')) {
-        setState({ user: DEMO_USER, isLoading: false, isAuthenticated: true });
-        return {};
+  const signIn = async (email: string, password: string): Promise<{ error: string | null }> => {
+    const hasSupabase = !!import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    if (!hasSupabase) {
+      // Demo mode login
+      const demoUsers: Record<string, GeckoUser> = {
+        'director@campgecko.com': { ...DEMO_USER, email, name: 'Director Gecko', role: 'director' },
+        'monitor1@campgecko.com': { ...DEMO_USER, id: 'demo-m1', email, name: 'Monitor 1', role: 'monitor' },
+        'monitor2@campgecko.com': { ...DEMO_USER, id: 'demo-m2', email, name: 'Monitor 2', role: 'monitor' },
+        'monitor3@campgecko.com': { ...DEMO_USER, id: 'demo-m3', email, name: 'Monitor 3', role: 'monitor' },
+        'admin@campgecko.com': { ...DEMO_USER, id: 'demo-admin', email, name: 'Admin Gecko', role: 'admin' },
+      };
+      const demoUser = demoUsers[email.toLowerCase()];
+      if (demoUser && password.length >= 6) {
+        localStorage.setItem('gecko_demo_user', JSON.stringify(demoUser));
+        setUser(demoUser);
+        return { error: null };
       }
-      return { error: 'Supabase não configurado. Use email "demo@campamentogecko.com"' };
+      return { error: 'Email ou password incorretos. Use os emails de demo com qualquer password (6+ chars).' };
     }
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: error.message };
-    return {};
+    return { error: error?.message || null };
   };
 
   const signOut = async () => {
-    if (isSupabaseConfigured()) {
+    localStorage.removeItem('gecko_demo_user');
+    if (import.meta.env.VITE_SUPABASE_ANON_KEY) {
       await supabase.auth.signOut();
     }
-    setState({ user: null, isLoading: false, isAuthenticated: false });
+    setUser(null);
   };
 
-  const isDirector = () => state.user?.role === 'director' || state.user?.role === 'admin';
-  const isAdmin = () => state.user?.role === 'admin';
+  const isDirector = () => user?.role === 'director';
+  const isAdmin = () => user?.role === 'admin';
+  const isMonitor = () => user?.role === 'monitor';
 
   return (
-    <AuthContext.Provider value={{ ...state, signIn, signOut, isDirector, isAdmin }}>
+    <AuthContext.Provider value={{
+      user,
+      isLoading,
+      isAuthenticated: !!user,
+      signIn,
+      signOut,
+      isDirector,
+      isAdmin,
+      isMonitor,
+    }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-export const useAuth = () => {
+export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
-};
+}
