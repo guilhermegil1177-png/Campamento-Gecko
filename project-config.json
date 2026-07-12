@@ -1,0 +1,36 @@
+{
+  "build_command": "pnpm run build",
+  "capabilities": [],
+  "dev_command": "pnpm run dev",
+  "env_vars": {},
+  "experiments": null,
+  "git_remote": {
+    "repo_url": "s3://vida-prod-gitrepo/webdev-git/310519663731073212/ESFuoGsbjgqG7nem7hLXwk",
+    "access_key_id": "ASIAZV3A2ECZEUKYFWL7",
+    "secret_access_key": "vwDrfSz4V/4h5S44EZHCdbFRSaGWk7eZqc0bId/T",
+    "session_token": "IQoJb3JpZ2luX2VjEHcaCXVzLWVhc3QtMSJIMEYCIQC8Je6B+SJjpBnBGsX3gaBi7hF04gDaQe8p1bib12fUSgIhANXzdnK4of8998QtEjJTV3AfwaB1Eo/YxZuBgLjNpJFmKvUDCEAQBBoMNjY1Mzg2MDk4ODY2IgxJpFoaQu4LjDIXTrwq0gNOYlRTibSc/qyFW5M21o4hBGCHXQL95qtQbH0q/uxAqWaWsWehwsVB5faF4Vky1Zj9lDO1BcmU/iO1w+R5MMSSyLPmlzcp17xFEYJvLteQp2Q/JT4tomZQMD6eg3wxbAxQEi52h18hNPj5O0iZNsPS034YOTXVUbJoA9pHYWDIa9W2OlO4SKIdHA5Ds3xM9+bHLSY3F/tUTYGhFivTapMUSTETqWM8X+sRoZ9wR23ULzapuPUH/sJqVzhyugje0S1C6/D3J4ce+//ABbCMevcpGlKreAgKV6VYxwEUgD8K+pe5hKKzrMsxHrqkpgDMKoq5Ct7f1dJCBcWmTyWz/UplvBI9Kg/cxU+D+h7s5wP3GLGv0aBkbQ6O6oC3M6hwYwQ2hEV3PkTeS+gn4B1n4CS2qvSEhoH8pnRPMDE02RN3IntpFzqdxvjYYWsHXTrISIG/mVO9FSyy1AgUvvq9Va21KTrA+alDFkPTdQHdCrkW9wLt8sBPKQhxXtUpYXJjU4Xu/HrOKJsNIInvamQg5bNPNsrReMvicNhIq0SjjtDJaQLut/O6XOGjEzhhlrHINsmikSc791396U9BxSm1dT6ZTSYQOsMIDE18xSJkPcoXwheJMOfSqdIGOpwBoudsPiC9FCnS+d0PbKjmUsgdhbTW7oIgrFKq8qJVohJusnOpgwLtas3QRawCPWMWDR8ZHcfhdqJC4noJcQ0FK8Tr5+NypkNfe/RD9+jy2EQJgrCMikm3wKs2mgttSPQrfyo0RSZlJaOOnA7IYryR/yZMZkYvU1ZXElvv3rIjKejd8lveEsyE21Y1aTiW4ionRUshbhmXxXgp4ib/",
+    "expiration": "2026-07-06T02:25:43.000Z",
+    "backend": "GIT_BACKEND_S3"
+  },
+  "name": "camp_scheduler",
+  "path": "/home/ubuntu/camp_scheduler",
+  "port": 3000,
+  "secrets": {
+    "BUILT_IN_FORGE_API_KEY": "TVxAaJskQqPmKdkZuEpHBf",
+    "BUILT_IN_FORGE_API_URL": "https://forge.manus.ai",
+    "JWT_SECRET": "9X2Mn8TDPugysJmPiEiR9b",
+    "OAUTH_SERVER_URL": "https://api.manus.im",
+    "OWNER_NAME": "Gil Guilherme",
+    "OWNER_OPEN_ID": "XJ4aqZd5DfbWpEhHQiFhFr",
+    "VITE_ANALYTICS_ENDPOINT": "https://manus-analytics.com",
+    "VITE_ANALYTICS_WEBSITE_ID": "d2d91a36-6ad6-4ea2-adbb-28f5b7604ce9",
+    "VITE_APP_ID": "ESFuoGsbjgqG7nem7hLXwk",
+    "VITE_APP_LOGO": "",
+    "VITE_APP_TITLE": "Camp Daily Scheduler",
+    "VITE_FRONTEND_FORGE_API_KEY": "KTte9NHzqtGCfaKHzpWBzb",
+    "VITE_FRONTEND_FORGE_API_URL": "https://forge.manus.ai",
+    "VITE_OAUTH_PORTAL_URL": "https://manus.im"
+  },
+  "template_id": "web-static",
+  "test_command": "pnpm test"
+}
