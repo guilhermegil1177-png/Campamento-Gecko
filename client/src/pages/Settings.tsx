@@ -1,43 +1,52 @@
-/**
- * Campamento Gecko - Settings Page
- */
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useOfflineStorage } from '@/hooks/useOfflineStorage';
 import { useNotificationManager } from '@/hooks/useNotificationManager';
-import { useAuth } from '@/contexts/AuthContext';
-import { Bell, Wifi, WifiOff, Trash2, ChevronLeft, User, Shield } from 'lucide-react';
-import { useLocation } from 'wouter';
+import { Bell, Wifi, WifiOff, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+/**
+ * Settings Page - Configurações e testes
+ */
 export default function Settings() {
   const { getDays, saveDays } = useOfflineStorage();
-  const { requestNotificationPermission, checkAndSendNotifications } = useNotificationManager();
-  const { user, signOut } = useAuth();
-  const [, setLocation] = useLocation();
+  const { requestNotificationPermission, checkAndSendNotifications } =
+    useNotificationManager();
 
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [swStatus, setSwStatus] = useState<string>('Verificando...');
   const [cacheSize, setCacheSize] = useState<string>('0 MB');
 
   useEffect(() => {
+    // Verificar status online/offline
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
+    // Verificar Service Worker
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(regs => {
-        setSwStatus(regs.length > 0 ? '✅ Ativo' : '⚠️ Não registado');
-      }).catch(() => setSwStatus('❌ Erro'));
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((registrations) => {
+          if (registrations.length > 0) {
+            setSwStatus('✅ Service Worker ativo');
+          } else {
+            setSwStatus('⚠️ Service Worker não registrado');
+          }
+        })
+        .catch(() => setSwStatus('❌ Erro ao verificar Service Worker'));
     } else {
-      setSwStatus('❌ Não suportado');
+      setSwStatus('❌ Service Worker não suportado');
     }
 
+    // Calcular tamanho do cache
     if ('storage' in navigator && 'estimate' in navigator.storage) {
-      navigator.storage.estimate().then(est => {
-        setCacheSize(`${((est.usage || 0) / 1024 / 1024).toFixed(2)} MB`);
+      navigator.storage.estimate().then((estimate) => {
+        const usedMB = ((estimate.usage || 0) / 1024 / 1024).toFixed(2);
+        setCacheSize(`${usedMB} MB`);
       });
     }
 
@@ -47,117 +56,177 @@ export default function Settings() {
     };
   }, []);
 
-  const handleClearData = async () => {
-    if (!confirm('Apagar todos os dados locais?')) return;
-    await saveDays([]);
-    toast.success('Dados apagados');
-    window.location.reload();
+  const handleRequestNotifications = async () => {
+    const granted = await requestNotificationPermission();
+    if (granted) {
+      toast.success('Notificações ativadas!');
+    } else {
+      toast.error('Permissão de notificações recusada');
+    }
   };
 
-  const ROLE_LABELS: Record<string, string> = {
-    director: '🎯 Director',
-    monitor: '👥 Monitor',
-    admin: '🛡️ Admin',
+  const handleTestNotification = async () => {
+    await checkAndSendNotifications();
+    toast.info('Verificação de notificações concluída');
+  };
+
+  const handleClearCache = async () => {
+    if ('caches' in window) {
+      const cacheNames = await caches.keys();
+      for (const name of cacheNames) {
+        await caches.delete(name);
+      }
+      toast.success('Cache limpo com sucesso');
+      setCacheSize('0 MB');
+    }
+  };
+
+  const handleClearData = async () => {
+    if (confirm('Tem a certeza que quer apagar todos os dados?')) {
+      await saveDays([]);
+      toast.success('Dados apagados');
+      // Recarregar página
+      window.location.reload();
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gecko-bg pb-8">
-      <header className="sticky top-0 z-40 border-b border-gecko-border bg-gecko-bg/95 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-3 flex items-center gap-3">
-          <button onClick={() => setLocation('/')} className="rounded-full p-2 hover:bg-gecko-card transition-colors">
-            <ChevronLeft className="h-5 w-5 text-gecko-muted" />
-          </button>
-          <h1 className="text-xl font-bold text-gecko-green font-playfair">Configurações</h1>
+    <div className="min-h-screen bg-gradient-to-b from-cream via-white to-muted pb-8">
+      {/* Header */}
+      <header className="sticky top-0 z-40 border-b-2 border-warm-tan bg-white/95 backdrop-blur-sm shadow-sm">
+        <div className="container mx-auto px-4 py-4">
+          <h1 className="text-2xl font-bold text-forest-green" style={{ fontFamily: "'Playfair Display', serif" }}>
+            Configurações
+          </h1>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6 space-y-4">
-        {/* User Profile */}
-        <Card className="gecko-card p-5">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-gecko-green/20 border-2 border-gecko-green flex items-center justify-center">
-              <span className="text-2xl">🦎</span>
-            </div>
-            <div>
-              <p className="font-bold text-gecko-text">{user?.nome ?? 'Utilizador'}</p>
-              <p className="text-sm text-gecko-muted">{user?.email}</p>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-gecko-green/20 text-gecko-green border border-gecko-green/30 mt-1 inline-block">
-                {user?.role ? ROLE_LABELS[user.role] : 'Monitor'}
-              </span>
-            </div>
-          </div>
-          <Button onClick={signOut} variant="outline" className="w-full mt-4 border-gecko-border text-gecko-muted hover:text-red-400 hover:border-red-400">
-            Terminar Sessão
-          </Button>
-        </Card>
+      {/* Content */}
+      <div className="container mx-auto px-4 py-6 space-y-6">
+        {/* Status Section */}
+        <Card className="p-6 border-2 border-warm-tan">
+          <h2 className="text-xl font-bold text-charcoal mb-4">Status da Aplicação</h2>
 
-        {/* Status */}
-        <Card className="gecko-card p-5">
-          <h2 className="font-bold text-gecko-text mb-4 flex items-center gap-2">
-            <Wifi className="h-4 w-4 text-gecko-green" /> Estado da Aplicação
-          </h2>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between p-3 bg-gecko-bg rounded-lg">
+          <div className="space-y-3">
+            {/* Online Status */}
+            <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
               <div className="flex items-center gap-2">
-                {isOnline ? <Wifi className="h-4 w-4 text-gecko-green" /> : <WifiOff className="h-4 w-4 text-red-400" />}
-                <span className="text-sm text-gecko-text">Conexão</span>
+                {isOnline ? (
+                  <Wifi className="h-5 w-5 text-green-500" />
+                ) : (
+                  <WifiOff className="h-5 w-5 text-red-500" />
+                )}
+                <span className="font-semibold">Conexão</span>
               </div>
-              <span className={`text-sm font-medium ${isOnline ? 'text-gecko-green' : 'text-red-400'}`}>
+              <span className={isOnline ? 'text-green-600' : 'text-red-600'}>
                 {isOnline ? 'Online' : 'Offline'}
               </span>
             </div>
-            <div className="flex items-center justify-between p-3 bg-gecko-bg rounded-lg">
-              <span className="text-sm text-gecko-text">Service Worker</span>
-              <span className="text-xs text-gecko-muted">{swStatus}</span>
+
+            {/* Service Worker Status */}
+            <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+              <span className="font-semibold">Service Worker</span>
+              <span className="text-sm">{swStatus}</span>
             </div>
-            <div className="flex items-center justify-between p-3 bg-gecko-bg rounded-lg">
-              <span className="text-sm text-gecko-text">Cache</span>
-              <span className="text-xs text-gecko-muted">{cacheSize}</span>
+
+            {/* Cache Size */}
+            <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+              <span className="font-semibold">Tamanho do Cache</span>
+              <span className="text-sm">{cacheSize}</span>
             </div>
           </div>
         </Card>
 
-        {/* Notifications */}
-        <Card className="gecko-card p-5">
-          <h2 className="font-bold text-gecko-text mb-4 flex items-center gap-2">
-            <Bell className="h-4 w-4 text-gecko-amber" /> Notificações
+        {/* Notifications Section */}
+        <Card className="p-6 border-2 border-warm-tan">
+          <h2 className="text-xl font-bold text-charcoal mb-4 flex items-center gap-2">
+            <Bell className="h-5 w-5" />
+            Notificações
           </h2>
-          <p className="text-sm text-gecko-muted mb-4">Alertas 10 minutos antes de cada atividade</p>
-          <div className="flex gap-2">
-            <Button onClick={async () => {
-              const ok = await requestNotificationPermission();
-              toast[ok ? 'success' : 'error'](ok ? 'Notificações ativadas!' : 'Permissão recusada');
-            }} className="flex-1 bg-gecko-green text-gecko-bg hover:bg-gecko-green/90">
-              Ativar
-            </Button>
-            <Button onClick={async () => { await checkAndSendNotifications(); toast.info('Verificação concluída'); }}
-              variant="outline" className="flex-1 border-gecko-border text-gecko-text">
-              Testar
-            </Button>
+
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Receba notificações 10 minutos antes de cada atividade
+            </p>
+
+            <div className="flex gap-2">
+              <Button
+                onClick={handleRequestNotifications}
+                className="flex-1 bg-forest-green hover:bg-forest-green/90"
+              >
+                Ativar Notificações
+              </Button>
+
+              <Button
+                onClick={handleTestNotification}
+                variant="outline"
+                className="flex-1"
+              >
+                Testar Notificações
+              </Button>
+            </div>
+
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-900">
+              <p>
+                💡 <strong>Dica:</strong> Permita notificações no seu navegador para receber alertas de atividades.
+              </p>
+            </div>
           </div>
         </Card>
 
-        {/* Storage */}
-        <Card className="gecko-card p-5">
-          <h2 className="font-bold text-gecko-text mb-4">Armazenamento</h2>
-          <Button onClick={handleClearData} variant="destructive" className="w-full">
-            <Trash2 className="mr-2 h-4 w-4" /> Apagar Dados Locais
-          </Button>
-          <p className="text-xs text-gecko-muted mt-2 text-center">⚠️ Esta ação é irreversível</p>
+        {/* Storage Section */}
+        <Card className="p-6 border-2 border-warm-tan">
+          <h2 className="text-xl font-bold text-charcoal mb-4">Armazenamento</h2>
+
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Gerencie o cache e os dados armazenados localmente
+            </p>
+
+            <div className="flex gap-2">
+              <Button
+                onClick={handleClearCache}
+                variant="outline"
+                className="flex-1"
+              >
+                Limpar Cache
+              </Button>
+
+              <Button
+                onClick={handleClearData}
+                variant="destructive"
+                className="flex-1"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Apagar Dados
+              </Button>
+            </div>
+
+            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-900">
+              <p>
+                ⚠️ <strong>Aviso:</strong> Apagar dados é irreversível. Certifique-se de fazer backup antes.
+              </p>
+            </div>
+          </div>
         </Card>
 
-        {/* About */}
-        <Card className="gecko-card p-5">
-          <div className="text-center">
-            <span className="text-4xl block mb-2">🦎</span>
-            <p className="font-bold text-gecko-green font-playfair">Campamento Gecko</p>
-            <p className="text-xs text-gecko-muted mt-1">v2.0.0 • React 19 + Supabase</p>
-            <div className="mt-3 text-xs text-gecko-muted space-y-1">
-              <p>✅ Funciona offline</p>
-              <p>✅ Notificações automáticas</p>
-              <p>✅ Roles e permissões</p>
-              <p>✅ Biblioteca de atividades</p>
-            </div>
+        {/* Info Section */}
+        <Card className="p-6 border-2 border-warm-tan">
+          <h2 className="text-xl font-bold text-charcoal mb-4">Sobre</h2>
+
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p>
+              <strong>Camp Daily Scheduler</strong> v1.0.0
+            </p>
+            <p>
+              Aplicação PWA para gerir esquemas diários de acampamento com suporte offline e notificações.
+            </p>
+            <p className="pt-2">
+              ✅ Funciona offline<br />
+              ✅ Notificações automáticas<br />
+              ✅ Sincronização de dados<br />
+              ✅ Compatível com iPhone
+            </p>
           </div>
         </Card>
       </div>

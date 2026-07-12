@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, Check, Users, FileText } from 'lucide-react';
+import { ChevronDown, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { TimeSlot } from '@/types';
 
@@ -14,23 +14,13 @@ export default function TimeSlotCard({ slot, onToggleComplete }: TimeSlotCardPro
   return (
     <div
       className={`
-        relative mb-3 rounded-xl border transition-all duration-300
-        ${slot.completed
-          ? 'border-gecko-green/50 bg-gecko-green/5'
-          : 'border-gecko-border bg-gecko-card hover:border-gecko-green/40'
-        }
-        hover:shadow-lg hover:shadow-gecko-green/5
+        relative mb-4 rounded-lg border-2 transition-all duration-300
+        ${slot.completed ? 'border-green-400 bg-green-50' : 'border-warm-tan bg-white'}
+        hover:shadow-lg hover:-translate-y-1
       `}
     >
       {/* Time Badge */}
-      <div className={`
-        absolute -left-3 top-4 flex h-12 w-12 items-center justify-center rounded-full
-        font-mono font-bold text-xs shadow-md border
-        ${slot.completed
-          ? 'bg-gecko-green text-gecko-bg border-gecko-green'
-          : 'bg-gecko-bg text-gecko-green border-gecko-green/50'
-        }
-      `}>
+      <div className="absolute -left-3 top-4 flex h-12 w-12 items-center justify-center rounded-full bg-forest-green text-cream font-mono font-bold text-sm shadow-md">
         {slot.time}
       </div>
 
@@ -39,46 +29,32 @@ export default function TimeSlotCard({ slot, onToggleComplete }: TimeSlotCardPro
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
-            <h3 className={`text-base font-semibold font-montserrat ${slot.completed ? 'text-gecko-muted line-through' : 'text-gecko-text'}`}>
+            <h3 className="text-lg font-semibold text-charcoal" style={{ fontFamily: "'Montserrat', sans-serif" }}>
               {slot.title}
             </h3>
-            {slot.description && (
-              <p className="mt-0.5 text-sm text-gecko-muted line-clamp-1">
-                {slot.description}
-              </p>
-            )}
-            {/* Quick info */}
-            <div className="flex items-center gap-3 mt-1">
-              {slot.assignees && slot.assignees.length > 0 && (
-                <span className="flex items-center gap-1 text-xs text-gecko-muted">
-                  <Users className="h-3 w-3" />
-                  {slot.assignees.length} responsáveis
-                </span>
-              )}
-              {slot.notes && slot.notes.length > 0 && (
-                <span className="flex items-center gap-1 text-xs text-gecko-muted">
-                  <FileText className="h-3 w-3" />
-                  {slot.notes.length} notas
-                </span>
-              )}
-            </div>
+            <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
+              {slot.description}
+            </p>
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-1">
+          <div className="flex gap-2">
             {slot.completed && (
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gecko-green">
-                <Check className="h-4 w-4 text-gecko-bg" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-400">
+                <Check className="h-5 w-5 text-white" />
               </div>
             )}
+
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="h-8 w-8 p-0 text-gecko-muted hover:text-gecko-text hover:bg-gecko-bg"
+              className="h-8 w-8 p-0"
             >
               <ChevronDown
-                className={`h-4 w-4 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
+                className={`h-5 w-5 transition-transform duration-300 ${
+                  isExpanded ? 'rotate-180' : ''
+                }`}
               />
             </Button>
           </div>
@@ -86,21 +62,27 @@ export default function TimeSlotCard({ slot, onToggleComplete }: TimeSlotCardPro
 
         {/* Expanded Content */}
         {isExpanded && (
-          <div className="mt-4 space-y-3 border-t border-gecko-border pt-4 animate-in">
+          <div className="mt-4 space-y-3 border-t border-border pt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+            {/* Full Description */}
             {slot.description && (
               <div>
-                <p className="text-xs font-semibold text-gecko-muted uppercase tracking-wider mb-1">Descrição</p>
-                <p className="text-sm text-gecko-text">{slot.description}</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Descrição
+                </p>
+                <p className="mt-1 text-sm text-foreground">{slot.description}</p>
               </div>
             )}
 
+            {/* Notes */}
             {slot.notes && slot.notes.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-gecko-muted uppercase tracking-wider mb-2">Notas</p>
-                <ul className="space-y-1.5">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Notas
+                </p>
+                <ul className="mt-2 space-y-1">
                   {slot.notes.map((note, idx) => (
-                    <li key={idx} className="flex items-start gap-2 text-sm text-gecko-text">
-                      <span className="mt-1.5 inline-block h-1.5 w-1.5 rounded-full bg-gecko-green flex-shrink-0" />
+                    <li key={idx} className="flex items-start gap-2 text-sm text-foreground">
+                      <span className="mt-1 inline-block h-1.5 w-1.5 rounded-full bg-forest-green flex-shrink-0" />
                       <span>{note}</span>
                     </li>
                   ))}
@@ -108,14 +90,17 @@ export default function TimeSlotCard({ slot, onToggleComplete }: TimeSlotCardPro
               </div>
             )}
 
+            {/* Assignees */}
             {slot.assignees && slot.assignees.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-gecko-muted uppercase tracking-wider mb-2">Responsáveis</p>
-                <div className="flex flex-wrap gap-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Responsáveis
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
                   {slot.assignees.map((assignee, idx) => (
                     <span
                       key={idx}
-                      className="inline-block rounded-full bg-gecko-blue/10 border border-gecko-blue/30 px-3 py-1 text-xs font-medium text-gecko-blue"
+                      className="inline-block rounded-full bg-sky-blue/10 px-3 py-1 text-xs font-medium text-sky-blue"
                     >
                       {assignee}
                     </span>
@@ -124,17 +109,14 @@ export default function TimeSlotCard({ slot, onToggleComplete }: TimeSlotCardPro
               </div>
             )}
 
+            {/* Complete Button */}
             {onToggleComplete && (
               <Button
                 onClick={() => onToggleComplete(slot.id)}
                 variant={slot.completed ? 'outline' : 'default'}
-                className={`mt-2 w-full ${
-                  slot.completed
-                    ? 'border-gecko-border text-gecko-muted hover:bg-gecko-bg'
-                    : 'bg-gecko-green text-gecko-bg hover:bg-gecko-green/90'
-                }`}
+                className="mt-4 w-full"
               >
-                {slot.completed ? 'Marcar como Pendente' : '✓ Marcar Concluído'}
+                {slot.completed ? 'Marcar como Pendente' : 'Marcar Concluído'}
               </Button>
             )}
           </div>

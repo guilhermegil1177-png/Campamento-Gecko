@@ -43,86 +43,72 @@
 }
 
 :root {
-  /* Campamento Gecko - Dark Theme (default) */
-  --gecko-green: #4ade80;
-  --gecko-green-dark: #16a34a;
-  --gecko-amber: #f59e0b;
-  --gecko-blue: #38bdf8;
-  --gecko-red: #f87171;
-
+  /* Camp Scheduler Brand Colors */
+  --color-forest-green: #2D5016;
+  --color-warm-tan: #C9A876;
+  --color-sky-blue: #5B9BD5;
+  --color-charcoal: #2C2C2C;
+  --color-cream: #F5F1E8;
+  
+  --primary: #2D5016;
+  --primary-foreground: #F5F1E8;
+  --sidebar-primary: #2D5016;
+  --sidebar-primary-foreground: #F5F1E8;
+  --chart-1: #5B9BD5;
+  --chart-2: #2D5016;
+  --chart-3: #C9A876;
+  --chart-4: #2C2C2C;
+  --chart-5: #8B7355;
   --radius: 0.75rem;
-
-  /* Dark theme as default */
-  --background: #0f1a0a;
-  --foreground: #e8f5e9;
-  --card: #1a2e10;
-  --card-foreground: #e8f5e9;
-  --popover: #1a2e10;
-  --popover-foreground: #e8f5e9;
-  --primary: #4ade80;
-  --primary-foreground: #0f1a0a;
-  --secondary: #2d4a1e;
-  --secondary-foreground: #e8f5e9;
-  --muted: #1e3314;
-  --muted-foreground: #86a87a;
-  --accent: #38bdf8;
-  --accent-foreground: #0f1a0a;
-  --destructive: #f87171;
-  --destructive-foreground: #0f1a0a;
-  --border: #2d4a1e;
-  --input: #1a2e10;
-  --ring: #4ade80;
-  --chart-1: #4ade80;
-  --chart-2: #38bdf8;
-  --chart-3: #f59e0b;
-  --chart-4: #f87171;
-  --chart-5: #a78bfa;
-  --sidebar: #0d1f08;
-  --sidebar-foreground: #e8f5e9;
-  --sidebar-primary: #4ade80;
-  --sidebar-primary-foreground: #0f1a0a;
-  --sidebar-accent: #1a2e10;
-  --sidebar-accent-foreground: #e8f5e9;
-  --sidebar-border: #2d4a1e;
-  --sidebar-ring: #4ade80;
-
-  /* Legacy brand colors (kept for compat) */
-  --color-forest-green: #4ade80;
-  --color-warm-tan: #f59e0b;
-  --color-sky-blue: #38bdf8;
-  --color-charcoal: #e8f5e9;
-  --color-cream: #0f1a0a;
+  --background: #F5F1E8;
+  --foreground: #2C2C2C;
+  --card: #FFFFFF;
+  --card-foreground: #2C2C2C;
+  --popover: #FFFFFF;
+  --popover-foreground: #2C2C2C;
+  --secondary: #C9A876;
+  --secondary-foreground: #2C2C2C;
+  --muted: #E8DFD3;
+  --muted-foreground: #6B5D4F;
+  --accent: #5B9BD5;
+  --accent-foreground: #FFFFFF;
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+  --border: #D9CEBD;
+  --input: #FFFFFF;
+  --ring: #2D5016;
+  --sidebar: #F5F1E8;
+  --sidebar-foreground: #2C2C2C;
+  --sidebar-accent: #2D5016;
+  --sidebar-accent-foreground: #F5F1E8;
+  --sidebar-border: #D9CEBD;
+  --sidebar-ring: #2D5016;
 }
 
-/* Light mode override (optional) */
-.light {
-  --background: #f0fdf4;
-  --foreground: #14532d;
-  --card: #ffffff;
-  --card-foreground: #14532d;
-  --popover: #ffffff;
-  --popover-foreground: #14532d;
-  --primary: #16a34a;
-  --primary-foreground: #ffffff;
-  --secondary: #dcfce7;
-  --secondary-foreground: #14532d;
-  --muted: #f0fdf4;
-  --muted-foreground: #4b7a5a;
-  --accent: #0ea5e9;
-  --accent-foreground: #ffffff;
-  --destructive: #dc2626;
-  --destructive-foreground: #ffffff;
-  --border: #bbf7d0;
-  --input: #ffffff;
-  --ring: #16a34a;
-  --sidebar: #f0fdf4;
-  --sidebar-foreground: #14532d;
-  --sidebar-primary: #16a34a;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #dcfce7;
-  --sidebar-accent-foreground: #14532d;
-  --sidebar-border: #bbf7d0;
-  --sidebar-ring: #16a34a;
+.dark {
+  --background: #1A1A1A;
+  --foreground: #F5F1E8;
+  --card: #2C2C2C;
+  --card-foreground: #F5F1E8;
+  --popover: #2C2C2C;
+  --popover-foreground: #F5F1E8;
+  --secondary: #8B7355;
+  --secondary-foreground: #F5F1E8;
+  --muted: #3D3D3D;
+  --muted-foreground: #B8A89A;
+  --accent: #5B9BD5;
+  --accent-foreground: #1A1A1A;
+  --destructive: #EF4444;
+  --destructive-foreground: #1A1A1A;
+  --border: #3D3D3D;
+  --input: #2C2C2C;
+  --ring: #5B9BD5;
+  --sidebar: #1A1A1A;
+  --sidebar-foreground: #F5F1E8;
+  --sidebar-accent: #2D5016;
+  --sidebar-accent-foreground: #F5F1E8;
+  --sidebar-border: #3D3D3D;
+  --sidebar-ring: #5B9BD5;
 }
 
 @layer base {
@@ -133,14 +119,26 @@
     @apply bg-background text-foreground;
     font-family: 'Inter', sans-serif;
   }
-  h1 { font-family: 'Playfair Display', serif; @apply font-bold text-4xl md:text-5xl; }
-  h2 { font-family: 'Montserrat', sans-serif; @apply font-bold text-2xl; }
-  h3 { font-family: 'Montserrat', sans-serif; @apply font-semibold text-lg; }
-  code, pre { font-family: 'IBM Plex Mono', monospace; }
+  h1 {
+    font-family: 'Playfair Display', serif;
+    @apply font-bold text-4xl md:text-5xl;
+  }
+  h2 {
+    font-family: 'Montserrat', sans-serif;
+    @apply font-bold text-2xl;
+  }
+  h3 {
+    font-family: 'Montserrat', sans-serif;
+    @apply font-semibold text-lg;
+  }
+  code, pre {
+    font-family: 'IBM Plex Mono', monospace;
+  }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
   [type="button"]:not(:disabled),
   [type="submit"]:not(:disabled),
+  [type="reset"]:not(:disabled),
   a[href],
   select:not(:disabled),
   input[type="checkbox"]:not(:disabled),
@@ -150,69 +148,118 @@
 }
 
 @layer components {
-  /* Gecko Brand Colors */
-  .text-gecko-green { color: #4ade80; }
-  .bg-gecko-green { background-color: #4ade80; }
-  .border-gecko-green { border-color: #4ade80; }
-  .text-gecko-amber { color: #f59e0b; }
-  .bg-gecko-amber { background-color: #f59e0b; }
-  .text-gecko-blue { color: #38bdf8; }
-  .bg-gecko-blue { background-color: #38bdf8; }
-  .text-gecko-text { color: #e8f5e9; }
-  .text-gecko-muted { color: #86a87a; }
-  .bg-gecko-bg { background-color: #0f1a0a; }
-  .bg-gecko-card { background-color: #1a2e10; }
-  .border-gecko-border { border-color: #2d4a1e; }
-
-  /* Legacy compat */
-  .text-forest-green { color: #4ade80; }
-  .bg-forest-green { background-color: #4ade80; }
-  .border-forest-green { border-color: #4ade80; }
-  .text-warm-tan { color: #f59e0b; }
-  .bg-warm-tan { background-color: #f59e0b; }
-  .border-warm-tan { border-color: #2d4a1e; }
-  .text-sky-blue { color: #38bdf8; }
-  .bg-sky-blue { background-color: #38bdf8; }
-  .border-sky-blue { border-color: #38bdf8; }
-  .text-charcoal { color: #e8f5e9; }
-  .bg-charcoal { background-color: #1a2e10; }
-  .text-cream { color: #e8f5e9; }
-  .bg-cream { background-color: #0f1a0a; }
-
-  .font-playfair { font-family: 'Playfair Display', serif; }
-  .font-montserrat { font-family: 'Montserrat', sans-serif; }
-
+  /* Brand Color Classes */
+  .text-forest-green {
+    color: #2D5016;
+  }
+  .bg-forest-green {
+    background-color: #2D5016;
+  }
+  .border-forest-green {
+    border-color: #2D5016;
+  }
+  
+  .text-warm-tan {
+    color: #C9A876;
+  }
+  .bg-warm-tan {
+    background-color: #C9A876;
+  }
+  .border-warm-tan {
+    border-color: #C9A876;
+  }
+  
+  .text-sky-blue {
+    color: #5B9BD5;
+  }
+  .bg-sky-blue {
+    background-color: #5B9BD5;
+  }
+  .border-sky-blue {
+    border-color: #5B9BD5;
+  }
+  
+  .text-charcoal {
+    color: #2C2C2C;
+  }
+  .bg-charcoal {
+    background-color: #2C2C2C;
+  }
+  .border-charcoal {
+    border-color: #2C2C2C;
+  }
+  
+  .text-cream {
+    color: #F5F1E8;
+  }
+  .bg-cream {
+    background-color: #F5F1E8;
+  }
+  .border-cream {
+    border-color: #F5F1E8;
+  }
+  
+  .font-playfair {
+    font-family: 'Playfair Display', serif;
+  }
+  .font-montserrat {
+    font-family: 'Montserrat', sans-serif;
+  }
+  
+  /**
+   * Custom container utility that centers content and adds responsive padding.
+   *
+   * This overrides Tailwind's default container behavior to:
+   * - Auto-center content (mx-auto)
+   * - Add responsive horizontal padding
+   * - Set max-width for large screens
+   *
+   * Usage: <div className="container">...</div>
+   *
+   * For custom widths, use max-w-* utilities directly:
+   * <div className="max-w-6xl mx-auto px-4">...</div>
+   */
   .container {
     width: 100%;
     margin-left: auto;
     margin-right: auto;
-    padding-left: 1rem;
+    padding-left: 1rem; /* 16px - mobile padding */
     padding-right: 1rem;
   }
-  .flex { min-height: 0; min-width: 0; }
+
+  .flex {
+    min-height: 0;
+    min-width: 0;
+  }
 
   @media (min-width: 640px) {
-    .container { padding-left: 1.5rem; padding-right: 1.5rem; }
+    .container {
+      padding-left: 1.5rem; /* 24px - tablet padding */
+      padding-right: 1.5rem;
+    }
   }
+
   @media (min-width: 1024px) {
-    .container { padding-left: 2rem; padding-right: 2rem; max-width: 1280px; }
+    .container {
+      padding-left: 2rem; /* 32px - desktop padding */
+      padding-right: 2rem;
+      max-width: 1280px; /* Standard content width */
+    }
   }
 
+  /* Animation utilities */
   @keyframes slideInFromBottom {
-    from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
-  .animate-in { animation: slideInFromBottom 0.4s ease-out; }
 
-  /* Gecko card glow */
-  .gecko-card {
-    background: #1a2e10;
-    border: 1px solid #2d4a1e;
-    border-radius: 0.75rem;
-    transition: all 0.2s;
-  }
-  .gecko-card:hover {
-    border-color: #4ade80;
-    box-shadow: 0 0 20px rgba(74, 222, 128, 0.1);
+  .animate-in {
+    animation: slideInFromBottom 0.4s ease-out;
   }
 }
