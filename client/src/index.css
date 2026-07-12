@@ -113,9 +113,7 @@
   * {
     @apply border-border outline-ring/50;
   }
-  html {
-    @apply dark;
-  }
+  
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', sans-serif;
