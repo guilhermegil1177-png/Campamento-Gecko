@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+aqui tens o file faz tu o update, pois eu não encontro o codigo okay (import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -167,7 +167,8 @@ export default function Schedules() {
       created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
     };
     if (!isDemo) {
-      const { data, error } = await supabase.from('time_slots').insert({ ...newSlot }).select().single();
+      const { id: _id, created_at: _ca, updated_at: _ua, ...slotPayload } = newSlot;
+      const { data, error } = await supabase.from('time_slots').insert(slotPayload).select().single();
       if (error) return toast.error(error.message);
       newSlot.id = data.id;
     }
@@ -521,4 +522,4 @@ export default function Schedules() {
       </div>
     </div>
   );
-}
+})
