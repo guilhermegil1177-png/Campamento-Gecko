@@ -3,11 +3,17 @@ import { useLocation } from 'wouter';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import type { Schedule, TimeSlot } from '@/types';
-import { ArrowLeft, Plus, Trash2, Check, ChevronDown, ChevronUp, Edit2, X, Save, Clock, Users, FileText } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Check, ChevronDown, ChevronUp, X, Save, Clock, Users, FileText, Bell, CheckSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { nanoid } from 'nanoid';
 
-// Demo data
+const DEMO_MONITORS = [
+  { id: 'demo-1', name: 'Maria Monitor', role: 'monitor' },
+  { id: 'demo-2', name: 'Pedro Monitor', role: 'monitor' },
+  { id: 'demo-3', name: 'Sofia Monitor', role: 'monitor' },
+  { id: 'demo-director', name: 'João Director', role: 'director' },
+];
+
 const DEMO_SCHEDULES: Schedule[] = [
   {
     id: 'demo-1',
@@ -17,15 +23,7 @@ const DEMO_SCHEDULES: Schedule[] = [
     created_by: 'demo-director',
     time_slots: [
       { id: 's1', schedule_id: 'demo-1', time: '07:50', title: 'Despertador', description: 'Acordar os acampados', notes: [], assignees: [], completed: true, notification_sent: false, created_at: '', updated_at: '' },
-      { id: 's2', schedule_id: 'demo-1', time: '08:20', title: 'Desayuno', description: 'Pequeno-almoço coletivo', notes: ['Aron, Gil e Sergio ficam na instalação', 'Ruta: Nuria abre a rota'], assignees: ['Nuria', 'Paula', 'Ainara', 'Gloria'], completed: true, notification_sent: false, created_at: '', updated_at: '' },
-      { id: 's3', schedule_id: 'demo-1', time: '08:45', title: 'Salida en bus', description: 'Saída em autocarro para Jerte', notes: ['Garrafas de água 6/8 (Luis e Ainara)', 'Jogos de mesa (Juanmar)', 'Bolas (Paula)'], assignees: ['Luis', 'Ainara', 'Juanmar', 'Paula', 'Aron', 'Sergio'], completed: false, notification_sent: false, created_at: '', updated_at: '' },
-      { id: 's4', schedule_id: 'demo-1', time: '09:30', title: 'Llegada a Jerte - Inicio Ruta', description: 'Chegada e início da rota de Pilones', notes: ['Briefing Pilones - Nuria', 'Monitores cada 10/12 miúdos', 'Descida de pilones em grupos pequenos'], assignees: ['Nuria', 'Luis', 'Paula', 'Laura', 'Ainara', 'Carla'], completed: false, notification_sent: false, created_at: '', updated_at: '' },
-      { id: 's5', schedule_id: 'demo-1', time: '14:30', title: 'Piquenique', description: 'Aproximadamente - MÁXIMA COORDENAÇÃO', notes: ['Subirão o piquenique até ao refúgio do Escribano', 'Come-se ali e passa-se ali toda a jornada'], assignees: ['Clara', 'Sere'], completed: false, notification_sent: false, created_at: '', updated_at: '' },
-      { id: 's6', schedule_id: 'demo-1', time: '17:00', title: 'Recogida y bajada', description: 'Recolha e descida ao merendouro', notes: [], assignees: [], completed: false, notification_sent: false, created_at: '', updated_at: '' },
-      { id: 's7', schedule_id: 'demo-1', time: '18:30', title: 'Vuelta al campamento', description: 'Regresso ao acampamento', notes: [], assignees: [], completed: false, notification_sent: false, created_at: '', updated_at: '' },
-      { id: 's8', schedule_id: 'demo-1', time: '19:30', title: 'Duchas', description: 'Banho', notes: [], assignees: [], completed: false, notification_sent: false, created_at: '', updated_at: '' },
-      { id: 's9', schedule_id: 'demo-1', time: '20:30', title: 'Cena', description: 'Jantar', notes: [], assignees: [], completed: false, notification_sent: false, created_at: '', updated_at: '' },
-      { id: 's10', schedule_id: 'demo-1', time: '22:00', title: 'Velada', description: 'Histórias das estrelas / Relaxamento', notes: ['Cuentos de las estrellas / relajación'], assignees: [], completed: false, notification_sent: false, created_at: '', updated_at: '' },
+      { id: 's2', schedule_id: 'demo-1', time: '08:20', title: 'Desayuno', description: 'Pequeno-almoço coletivo', notes: ['Aron, Gil e Sergio ficam na instalação'], assignees: ['Maria Monitor', 'Pedro Monitor'], completed: true, notification_sent: false, created_at: '', updated_at: '' },
     ],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -41,22 +39,40 @@ export default function Schedules() {
   const [showNewForm, setShowNewForm] = useState(false);
   const [showNewSlotForm, setShowNewSlotForm] = useState(false);
   const [expandedSlots, setExpandedSlots] = useState<Set<string>>(new Set());
+  const [monitors, setMonitors] = useState<{ id: string; name: string; role: string }[]>([]);
+  const [showMonitorDropdown, setShowMonitorDropdown] = useState(false);
+  const [notifications, setNotifications] = useState<{ id: string; message: string; read: boolean }[]>([]);
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
 
-  // New schedule form
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // New slot form
   const [slotTime, setSlotTime] = useState('');
   const [slotTitle, setSlotTitle] = useState('');
   const [slotDesc, setSlotDesc] = useState('');
-  const [slotAssignees, setSlotAssignees] = useState('');
+  const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
   const [slotNote, setSlotNote] = useState('');
 
-  useEffect(() => { loadSchedules(); }, []);
-
   const isDemo = !import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+  useEffect(() => {
+    loadSchedules();
+    loadMonitors();
+  }, []);
+
+  const loadMonitors = async () => {
+    if (isDemo) {
+      setMonitors(DEMO_MONITORS);
+      return;
+    }
+    const { data } = await supabase
+      .from('users')
+      .select('id, name, role')
+      .in('role', ['monitor', 'director'])
+      .order('role', { ascending: false });
+    if (data) setMonitors(data);
+  };
 
   const loadSchedules = async () => {
     setIsLoading(true);
@@ -66,7 +82,7 @@ export default function Schedules() {
         if (stored) {
           const parsed = JSON.parse(stored);
           setSchedules(parsed);
-          if (parsed.length > 0 && !selected) setSelected(parsed[0]);
+          if (parsed.length > 0) setSelected(parsed[0]);
         } else {
           setSchedules(DEMO_SCHEDULES);
           setSelected(DEMO_SCHEDULES[0]);
@@ -85,17 +101,18 @@ export default function Schedules() {
     if (isDemo) localStorage.setItem('gecko_schedules', JSON.stringify(updated));
   };
 
+  const toggleAssignee = (name: string) => {
+    setSelectedAssignees(prev =>
+      prev.includes(name) ? prev.filter(a => a !== name) : [...prev, name]
+    );
+  };
+
   const createSchedule = async () => {
     if (!newTitle.trim()) return toast.error('Título obrigatório');
     const newS: Schedule = {
-      id: nanoid(),
-      title: newTitle,
-      description: newDesc,
-      date: newDate,
-      created_by: user?.id || 'demo',
-      time_slots: [],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      id: nanoid(), title: newTitle, description: newDesc, date: newDate,
+      created_by: user?.id || 'demo', time_slots: [],
+      created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
     };
     if (!isDemo) {
       const { data, error } = await supabase.from('schedules').insert({ title: newTitle, description: newDesc, date: newDate, created_by: user?.id }).select().single();
@@ -142,17 +159,12 @@ export default function Schedules() {
   const addSlot = async () => {
     if (!selected || !slotTime || !slotTitle.trim()) return toast.error('Hora e título obrigatórios');
     const newSlot: TimeSlot = {
-      id: nanoid(),
-      schedule_id: selected.id,
-      time: slotTime,
-      title: slotTitle,
+      id: nanoid(), schedule_id: selected.id, time: slotTime, title: slotTitle,
       description: slotDesc,
       notes: slotNote ? slotNote.split('\n').filter(Boolean) : [],
-      assignees: slotAssignees ? slotAssignees.split(',').map(a => a.trim()).filter(Boolean) : [],
-      completed: false,
-      notification_sent: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      assignees: selectedAssignees,
+      completed: false, notification_sent: false,
+      created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
     };
     if (!isDemo) {
       const { data, error } = await supabase.from('time_slots').insert({ ...newSlot }).select().single();
@@ -164,7 +176,7 @@ export default function Schedules() {
     setSelected(updatedSched);
     const updatedAll = schedules.map(s => s.id === selected.id ? updatedSched : s);
     setSchedules(updatedAll); saveToStorage(updatedAll);
-    setSlotTime(''); setSlotTitle(''); setSlotDesc(''); setSlotAssignees(''); setSlotNote('');
+    setSlotTime(''); setSlotTitle(''); setSlotDesc(''); setSelectedAssignees([]); setSlotNote('');
     setShowNewSlotForm(false);
     toast.success('Atividade adicionada!');
   };
@@ -191,6 +203,7 @@ export default function Schedules() {
   const slots = (selected?.time_slots || []).sort((a, b) => a.time.localeCompare(b.time));
   const done = slots.filter(s => s.completed).length;
   const pct = slots.length > 0 ? Math.round((done / slots.length) * 100) : 0;
+  const unreadNotifs = notifications.filter(n => !n.read).length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -201,6 +214,41 @@ export default function Schedules() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <h1 className="font-bold text-foreground text-lg flex-1">📋 Cronogramas</h1>
+
+          {/* 🔔 Notification Bell */}
+          <div className="relative">
+            <button
+              onClick={() => setShowNotifPanel(!showNotifPanel)}
+              className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground relative"
+            >
+              <Bell className="w-5 h-5" />
+              {unreadNotifs > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {unreadNotifs}
+                </span>
+              )}
+            </button>
+            {showNotifPanel && (
+              <div className="absolute right-0 top-10 w-72 bg-card border border-border rounded-xl shadow-xl z-50 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="font-semibold text-foreground text-sm">Notificações</p>
+                  <button onClick={() => setShowNotifPanel(false)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+                </div>
+                {notifications.length === 0 ? (
+                  <p className="text-muted-foreground text-xs text-center py-4">Sem notificações</p>
+                ) : (
+                  <div className="space-y-2">
+                    {notifications.map(n => (
+                      <div key={n.id} className={`text-xs p-2 rounded-lg ${n.read ? 'text-muted-foreground' : 'text-foreground bg-primary/10'}`}>
+                        {n.message}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {isDirector() && (
             <button onClick={() => setShowNewForm(true)} className="gecko-btn-primary text-sm flex items-center gap-1.5">
               <Plus className="w-4 h-4" /> Novo
@@ -252,10 +300,7 @@ export default function Schedules() {
                   <p className="text-xs text-muted-foreground">{new Date(s.date + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'long' })}</p>
                 </div>
                 {isDirector() && (
-                  <button
-                    onClick={e => { e.stopPropagation(); deleteSchedule(s.id); }}
-                    className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors flex-shrink-0"
-                  >
+                  <button onClick={e => { e.stopPropagation(); deleteSchedule(s.id); }} className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors flex-shrink-0">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 )}
@@ -311,7 +356,65 @@ export default function Schedules() {
                       <input value={slotTitle} onChange={e => setSlotTitle(e.target.value)} placeholder="Título" className="px-3 py-2 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
                     </div>
                     <input value={slotDesc} onChange={e => setSlotDesc(e.target.value)} placeholder="Descrição" className="w-full px-3 py-2 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
-                    <input value={slotAssignees} onChange={e => setSlotAssignees(e.target.value)} placeholder="Responsáveis (separados por vírgula)" className="w-full px-3 py-2 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
+
+                    {/* 👥 Monitor Multi-Select Dropdown */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowMonitorDropdown(!showMonitorDropdown)}
+                        className="w-full px-3 py-2 rounded-lg bg-input border border-border text-left text-sm flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      >
+                        <span className={selectedAssignees.length === 0 ? 'text-muted-foreground' : 'text-foreground'}>
+                          {selectedAssignees.length === 0 ? 'Selecionar responsáveis...' : `${selectedAssignees.length} selecionado(s)`}
+                        </span>
+                        <Users className="w-4 h-4 text-muted-foreground" />
+                      </button>
+
+                      {/* Selected badges */}
+                      {selectedAssignees.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {selectedAssignees.map(name => (
+                            <span key={name} className="gecko-badge bg-accent/10 text-accent border border-accent/20 flex items-center gap-1 text-xs">
+                              {name}
+                              <button onClick={() => toggleAssignee(name)} className="hover:text-destructive">
+                                <X className="w-3 h-3" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Dropdown list */}
+                      {showMonitorDropdown && (
+                        <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-lg shadow-xl overflow-hidden">
+                          {monitors.map(m => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => { toggleAssignee(m.name); }}
+                              className="w-full px-3 py-2.5 text-left text-sm hover:bg-muted flex items-center justify-between transition-colors"
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full ${m.role === 'director' ? 'bg-primary' : 'bg-accent'}`} />
+                                <span className="text-foreground">{m.name}</span>
+                                <span className="text-[10px] text-muted-foreground capitalize">{m.role}</span>
+                              </div>
+                              {selectedAssignees.includes(m.name) && (
+                                <CheckSquare className="w-4 h-4 text-primary" />
+                              )}
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => setShowMonitorDropdown(false)}
+                            className="w-full px-3 py-2 text-xs text-center text-muted-foreground hover:bg-muted border-t border-border"
+                          >
+                            Fechar
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
                     <textarea value={slotNote} onChange={e => setSlotNote(e.target.value)} placeholder="Notas (uma por linha)" rows={2} className="w-full px-3 py-2 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none" />
                     <div className="flex gap-2">
                       <button onClick={addSlot} className="gecko-btn-primary flex-1 text-sm">Guardar</button>
@@ -328,15 +431,12 @@ export default function Schedules() {
                   {slots.map((slot) => {
                     const expanded = expandedSlots.has(slot.id);
                     return (
-                      <div key={slot.id} className={`relative flex gap-3 items-start group`}>
-                        {/* Time badge */}
+                      <div key={slot.id} className="relative flex gap-3 items-start group">
                         <div className={`flex-shrink-0 w-[4.5rem] text-center py-1.5 rounded-lg text-xs font-bold z-10 border transition-colors ${slot.completed ? 'bg-primary/20 text-primary border-primary/30' : 'bg-muted text-muted-foreground border-border'}`}>
                           {slot.time}
                         </div>
-                        {/* Card */}
                         <div className={`flex-1 gecko-card transition-all ${slot.completed ? 'opacity-70' : ''}`}>
                           <div className="flex items-start gap-3">
-                            {/* Checkbox */}
                             <button
                               onClick={() => toggleSlot(slot.id)}
                               className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all mt-0.5 ${slot.completed ? 'bg-primary border-primary' : 'border-muted-foreground hover:border-primary'}`}
@@ -369,7 +469,6 @@ export default function Schedules() {
                               )}
                             </div>
                           </div>
-                          {/* Expanded content */}
                           {expanded && (
                             <div className="mt-3 pt-3 border-t border-border space-y-2 animate-slide-up">
                               {slot.description && (
