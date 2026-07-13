@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Schedules from "./pages/Schedules";
 import Activities from "./pages/Activities";
 import Settings from "./pages/Settings";
+import MonitorDashboard from "./pages/MonitorDashboard";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -34,11 +35,27 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   return <Component />;
 }
 
+function RoleRouter() {
+  const { user, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
+
+  if (isLoading) return null;
+
+  // Redirect monitor role to monitor dashboard, director/admin to Home
+  if (user?.role === 'monitor') {
+    setLocation('/monitor');
+    return null;
+  }
+
+  return <Home />;
+}
+
 function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
-      <Route path="/" component={() => <ProtectedRoute component={Home} />} />
+      <Route path="/" component={() => <ProtectedRoute component={RoleRouter} />} />
+      <Route path="/monitor" component={() => <ProtectedRoute component={MonitorDashboard} />} />
       <Route path="/schedules" component={() => <ProtectedRoute component={Schedules} />} />
       <Route path="/activities" component={() => <ProtectedRoute component={Activities} />} />
       <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
@@ -62,4 +79,4 @@ function App() {
   );
 }
 
-export default App;
+export default App;)
