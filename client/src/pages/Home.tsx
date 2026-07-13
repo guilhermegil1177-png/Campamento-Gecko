@@ -3,10 +3,9 @@ import { useLocation } from 'wouter';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import type { Schedule } from '@/types';
-import { Calendar, BookOpen, MessageSquare, Bell, Settings, LogOut, Plus, ChevronRight, Clock, CheckCircle2, Users } from 'lucide-react';
+import { Calendar, BookOpen, MessageSquare, Bell, Settings, LogOut, Plus, ChevronRight, Clock, CheckCircle2, Users, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Sample schedules for demo mode
 const DEMO_SCHEDULES: Schedule[] = [
   {
     id: 'demo-1',
@@ -18,7 +17,7 @@ const DEMO_SCHEDULES: Schedule[] = [
       { id: 's1', schedule_id: 'demo-1', time: '07:50', title: 'Despertador', description: 'Acordar os acampados', notes: [], assignees: [], completed: true, notification_sent: false, created_at: '', updated_at: '' },
       { id: 's2', schedule_id: 'demo-1', time: '08:20', title: 'Desayuno', description: 'Pequeno-almoço coletivo', notes: ['Aron, Gil e Sergio ficam na instalação'], assignees: ['Nuria', 'Paula', 'Ainara'], completed: true, notification_sent: false, created_at: '', updated_at: '' },
       { id: 's3', schedule_id: 'demo-1', time: '08:45', title: 'Salida en bus', description: 'Saída em autocarro para Jerte', notes: ['Garrafas de água 6/8 (Luis e Ainara)'], assignees: ['Luis', 'Ainara'], completed: false, notification_sent: false, created_at: '', updated_at: '' },
-      { id: 's4', schedule_id: 'demo-1', time: '09:30', title: 'Llegada a Jerte - Inicio Ruta', description: 'Chegada e início da rota de Pilones', notes: ['Briefing Pilones - Nuria', 'Monitores cada 10/12 miúdos'], assignees: ['Nuria', 'Luis', 'Paula'], completed: false, notification_sent: false, created_at: '', updated_at: '' },
+      { id: 's4', schedule_id: 'demo-1', time: '09:30', title: 'Llegada a Jerte - Inicio Ruta', description: 'Chegada e início da rota de Pilones', notes: ['Briefing Pilones - Nuria'], assignees: ['Nuria', 'Luis', 'Paula'], completed: false, notification_sent: false, created_at: '', updated_at: '' },
       { id: 's5', schedule_id: 'demo-1', time: '14:30', title: 'Piquenique', description: 'Piquenique no refúgio do Escribano', notes: ['Máxima coordenação'], assignees: ['Clara', 'Sere'], completed: false, notification_sent: false, created_at: '', updated_at: '' },
       { id: 's6', schedule_id: 'demo-1', time: '18:30', title: 'Vuelta al campamento', description: 'Regresso ao acampamento', notes: [], assignees: [], completed: false, notification_sent: false, created_at: '', updated_at: '' },
       { id: 's7', schedule_id: 'demo-1', time: '20:30', title: 'Cena', description: 'Jantar', notes: [], assignees: [], completed: false, notification_sent: false, created_at: '', updated_at: '' },
@@ -79,12 +78,13 @@ export default function Home() {
   const totalSlots = todaySchedule?.time_slots?.length || 0;
   const completedSlots = todaySchedule?.time_slots?.filter(s => s.completed).length || 0;
   const progressPct = totalSlots > 0 ? Math.round((completedSlots / totalSlots) * 100) : 0;
+  const remainingSlots = totalSlots - completedSlots;
 
   const quickActions = [
     { label: 'Cronogramas', icon: Calendar, href: '/schedules', color: 'text-primary bg-primary/10 border-primary/30', desc: `${schedules.length} cronogramas` },
     { label: 'Atividades', icon: BookOpen, href: '/activities', color: 'text-accent bg-accent/10 border-accent/30', desc: 'Biblioteca' },
-    { label: 'Chat', icon: MessageSquare, href: '/chat', color: 'text-purple-400 bg-purple-400/10 border-purple-400/30', desc: 'Em breve' },
-    { label: 'Notificações', icon: Bell, href: '/notifications', color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30', desc: 'Em breve' },
+    { label: 'Chat', icon: MessageSquare, href: '/chat', color: 'text-purple-400 bg-purple-400/10 border-purple-400/30', desc: 'Equipa' },
+    { label: 'Notificações', icon: Bell, href: '/notifications', color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30', desc: 'Avisos' },
   ];
 
   const roleLabel = {
@@ -103,6 +103,24 @@ export default function Home() {
             <span className="font-bold text-primary text-lg hidden sm:block">Campamento Gecko</span>
           </div>
           <div className="flex items-center gap-2">
+            {/* Monitor View shortcut for directors */}
+            {isDirector() && (
+              <button
+                onClick={() => setLocation('/monitor')}
+                title="Ver vista do monitor"
+                className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+              >
+                <Eye className="w-5 h-5" />
+              </button>
+            )}
+            <button
+              onClick={() => setLocation('/notifications')}
+              className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground relative"
+            >
+              <Bell className="w-5 h-5" />
+              {/* Notification dot — substituir por lógica real de notificações */}
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full" />
+            </button>
             <button onClick={() => setLocation('/settings')} className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
               <Settings className="w-5 h-5" />
             </button>
@@ -149,6 +167,9 @@ export default function Home() {
             </div>
             <p className="text-xs text-muted-foreground">
               {completedSlots}/{totalSlots} atividades concluídas
+              {remainingSlots > 0 && (
+                <span className="ml-2 text-yellow-400">· {remainingSlots} por fazer</span>
+              )}
             </p>
           </div>
         )}
@@ -175,6 +196,24 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Director: Monitor View Banner */}
+        {isDirector() && (
+          <button
+            onClick={() => setLocation('/monitor')}
+            style={{ animationDelay: '130ms' }}
+            className="animate-slide-up w-full gecko-card border-accent/30 flex items-center gap-4 hover:border-accent/60 transition-all text-left"
+          >
+            <div className="p-3 rounded-xl bg-accent/10 border border-accent/30">
+              <Eye className="w-5 h-5 text-accent" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-foreground text-sm">Vista do Monitor</p>
+              <p className="text-xs text-muted-foreground">Ver a app como um monitor vê</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          </button>
+        )}
+
         {/* Recent Schedules */}
         <div style={{ animationDelay: '150ms' }} className="animate-slide-up">
           <div className="flex items-center justify-between mb-3">
@@ -191,7 +230,7 @@ export default function Home() {
 
           {isLoading ? (
             <div className="space-y-2">
-              {[1,2,3].map(i => <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />)}
+              {[1, 2, 3].map(i => <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />)}
             </div>
           ) : schedules.length === 0 ? (
             <div className="gecko-card text-center py-8">
@@ -255,7 +294,7 @@ export default function Home() {
           {[
             { label: 'Cronogramas', value: schedules.length, icon: '📋' },
             { label: 'Hoje', value: `${completedSlots}/${totalSlots}`, icon: '✅' },
-            { label: 'Equipa', value: isDirector() ? 'Director' : user?.role || '-', icon: '👥' },
+            { label: 'Por fazer', value: remainingSlots > 0 ? remainingSlots : '—', icon: '⏳' },
           ].map(({ label, value, icon }) => (
             <div key={label} className="gecko-card text-center">
               <p className="text-2xl mb-1">{icon}</p>
