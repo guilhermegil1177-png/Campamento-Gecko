@@ -3,9 +3,8 @@ import { useLocation } from 'wouter';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import type { Activity, ActivityCategory, ActivityDifficulty } from '@/types';
-import { ArrowLeft, Plus, Search, Trash2, X, Save, Filter } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Trash2, X, Save } from 'lucide-react';
 import { toast } from 'sonner';
-import { nanoid } from 'nanoid';
 
 const DEMO_ACTIVITIES: Activity[] = [
   { id: 'a1', title: 'Descenso de Pilones', description: 'Descida pelas piscinas naturais de Pilones em Jerte. Uma experiência única na natureza.', category: 'outdoor', instructions: '1. Briefing de segurança\n2. Divisão em grupos de 10-12\n3. Descida supervisionada pelos monitores', video_url: '', image_url: '', materials: ['Roupa para molhar', 'Toalha', 'Calçado aquático'], duration_minutes: 180, difficulty: 'medium', created_by: 'demo-director', created_at: '', updated_at: '' },
@@ -39,7 +38,6 @@ export default function Activities() {
   const [selected, setSelected] = useState<Activity | null>(null);
   const [showForm, setShowForm] = useState(false);
 
-  // New activity form
   const [form, setForm] = useState({ title: '', description: '', category: 'outdoor' as ActivityCategory, instructions: '', materials: '', duration: '60', difficulty: 'medium' as ActivityDifficulty });
 
   const isDemo = !import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -68,8 +66,7 @@ export default function Activities() {
 
   const createActivity = async () => {
     if (!form.title.trim()) return toast.error('Título obrigatório');
-    const newA: Activity = {
-      id: nanoid(),
+    const payload = {
       title: form.title,
       description: form.description,
       category: form.category,
@@ -78,16 +75,27 @@ export default function Activities() {
       duration_minutes: parseInt(form.duration) || 60,
       difficulty: form.difficulty,
       created_by: user?.id || 'demo',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     };
+
     if (!isDemo) {
-      const { data, error } = await supabase.from('activities').insert({ ...newA }).select().single();
+      const { data, error } = await supabase.from('activities').insert(payload).select().single();
       if (error) return toast.error(error.message);
-      newA.id = data.id;
+      const updated = [data, ...activities];
+      setActivities(updated);
+    } else {
+      const newA: Activity = {
+        ...payload,
+        id: crypto.randomUUID(),
+        video_url: '',
+        image_url: '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      const updated = [newA, ...activities];
+      setActivities(updated);
+      saveToStorage(updated);
     }
-    const updated = [newA, ...activities];
-    setActivities(updated); saveToStorage(updated);
+
     setForm({ title: '', description: '', category: 'outdoor', instructions: '', materials: '', duration: '60', difficulty: 'medium' });
     setShowForm(false);
     toast.success('Atividade criada! 🎉');
@@ -110,7 +118,6 @@ export default function Activities() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-3 flex items-center gap-3">
           <button onClick={() => setLocation('/')} className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
@@ -126,7 +133,6 @@ export default function Activities() {
       </header>
 
       <div className="container mx-auto px-4 py-4 max-w-2xl space-y-4">
-        {/* Search + Filters */}
         <div className="space-y-2 animate-slide-up">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -154,7 +160,6 @@ export default function Activities() {
           </div>
         </div>
 
-        {/* New Activity Form */}
         {showForm && isDirector() && (
           <div className="gecko-card border-primary/40 animate-slide-up">
             <div className="flex items-center justify-between mb-4">
@@ -188,7 +193,6 @@ export default function Activities() {
           </div>
         )}
 
-        {/* Activity Detail Modal */}
         {selected && (
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setSelected(null)}>
             <div className="gecko-card w-full max-w-lg max-h-[80vh] overflow-y-auto border-primary/40" onClick={e => e.stopPropagation()}>
@@ -231,7 +235,6 @@ export default function Activities() {
           </div>
         )}
 
-        {/* Activities Grid */}
         {isLoading ? (
           <div className="grid grid-cols-1 gap-3">{[1,2,3].map(i => <div key={i} className="h-24 rounded-xl bg-muted animate-pulse" />)}</div>
         ) : filtered.length === 0 ? (
