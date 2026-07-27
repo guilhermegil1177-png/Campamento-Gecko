@@ -1,5 +1,5 @@
 import { Switch, Route, useLocation } from 'wouter';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, AuthProvider } from '@/contexts/AuthContext';
 import { Toaster } from 'sonner';
 import Login from '@/pages/Login';
 import MonitorDashboard from '@/pages/MonitorDashboard';
@@ -40,7 +40,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-export default function App() {
+function AppRoutes() {
   return (
     <>
       <Toaster
@@ -56,47 +56,38 @@ export default function App() {
       <Switch>
         <Route path="/login" component={Login} />
         <Route path="/">
-          <ProtectedRoute>
-            <RoleRouter />
-          </ProtectedRoute>
+          <ProtectedRoute><RoleRouter /></ProtectedRoute>
         </Route>
         <Route path="/schedules">
-          <ProtectedRoute>
-            <Schedules />
-          </ProtectedRoute>
+          <ProtectedRoute><Schedules /></ProtectedRoute>
         </Route>
         <Route path="/activities">
-          <ProtectedRoute>
-            <Activities />
-          </ProtectedRoute>
+          <ProtectedRoute><Activities /></ProtectedRoute>
         </Route>
         <Route path="/settings">
-          <ProtectedRoute>
-            <Settings />
-          </ProtectedRoute>
+          <ProtectedRoute><Settings /></ProtectedRoute>
         </Route>
         <Route path="/monitor">
-          <ProtectedRoute>
-            <MonitorDashboard />
-          </ProtectedRoute>
+          <ProtectedRoute><MonitorDashboard /></ProtectedRoute>
         </Route>
         <Route path="/director">
-          <ProtectedRoute>
-            <DirectorDashboard />
-          </ProtectedRoute>
+          <ProtectedRoute><DirectorDashboard /></ProtectedRoute>
         </Route>
         <Route path="/admin">
-          <ProtectedRoute>
-            <AdminDashboard />
-          </ProtectedRoute>
+          <ProtectedRoute><AdminDashboard /></ProtectedRoute>
         </Route>
-        {/* 404 fallback */}
         <Route>
-          <ProtectedRoute>
-            <RoleRouter />
-          </ProtectedRoute>
+          <ProtectedRoute><RoleRouter /></ProtectedRoute>
         </Route>
       </Switch>
     </>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
   );
 }
