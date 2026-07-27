@@ -1,9 +1,3 @@
-/**
- * Campamento Gecko - Type Definitions
- * Alinhado com schema Supabase do PDF
- */
-
-// === AUTH & USERS ===
 export type UserRole = 'director' | 'monitor' | 'admin';
 
 export interface GeckoUser {
@@ -11,24 +5,34 @@ export interface GeckoUser {
   email: string;
   name: string;
   role: UserRole;
+  camp_id?: string;
   avatar_url?: string;
   created_at: string;
   updated_at: string;
 }
 
-export interface AuthState {
-  user: GeckoUser | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
+// === CAMPS ===
+export interface Camp {
+  id: string;
+  name: string;
+  description: string;
+  location: string;
+  start_date?: string;
+  end_date?: string;
+  active: boolean;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 // === SCHEDULES ===
 export interface Schedule {
   id: string;
-  title: string;        // ex: "Día 6 - PILONES"
+  title: string;
   description: string;
-  date: string;         // YYYY-MM-DD
-  created_by: string;   // FK: users.id
+  date: string;
+  camp_id?: string;
+  created_by: string;
   creator?: GeckoUser;
   time_slots?: TimeSlot[];
   created_at: string;
@@ -39,18 +43,20 @@ export interface Schedule {
 export interface TimeSlot {
   id: string;
   schedule_id: string;
-  time: string;           // "07:50"
+  time: string;
   title: string;
   description: string;
-  notes: string[];        // JSON array
-  assignees: string[];    // JSON array de nomes/IDs monitores
+  notes: string[];
+  assignees: string[];
   completed: boolean;
+  completed_by?: string;
+  completed_at?: string;
   notification_sent: boolean;
   created_at: string;
   updated_at: string;
 }
 
-// === ACTIVITIES (Biblioteca) ===
+// === ACTIVITIES ===
 export type ActivityCategory = 'outdoor' | 'indoor' | 'craft' | 'sport';
 export type ActivityDifficulty = 'easy' | 'medium' | 'hard';
 
@@ -62,10 +68,26 @@ export interface Activity {
   instructions: string;
   video_url?: string;
   image_url?: string;
-  materials: string[];      // JSON array
+  materials: string[];
   duration_minutes: number;
   difficulty: ActivityDifficulty;
+  camp_id?: string;
   created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// === PROTOCOLS (novo) ===
+export type ProtocolCategory = 'safety' | 'emergency' | 'routine' | 'general';
+
+export interface Protocol {
+  id: string;
+  title: string;
+  content: string;
+  category: ProtocolCategory;
+  camp_id?: string;
+  created_by: string;
+  creator?: GeckoUser;
   created_at: string;
   updated_at: string;
 }
@@ -73,40 +95,58 @@ export interface Activity {
 // === MESSAGES ===
 export interface Message {
   id: string;
-  schedule_id: string;
+  camp_id?: string;
   sender_id: string;
   sender?: GeckoUser;
+  receiver_id?: string;       // null = global
   content: string;
+  is_private: boolean;
   attachment_url?: string;
   created_at: string;
 }
 
 // === NOTIFICATIONS ===
+export type NotificationType =
+  | 'info'
+  | 'warning'
+  | 'success'
+  | 'error'
+  | 'chat'
+  | 'schedule'
+  | 'activity'
+  | 'director_alert';
+
 export interface AppNotification {
   id: string;
   user_id: string;
+  camp_id?: string;
   schedule_id?: string;
   time_slot_id?: string;
   title: string;
   message: string;
+  type: NotificationType;
   read: boolean;
   created_at: string;
 }
 
-// === LOCAL / OFFLINE (compatibilidade backward) ===
-export interface CampDay {
+// === MONITOR LOGS (novo) ===
+export type MonitorLogType = 'presence' | 'incident' | 'observation' | 'warning';
+
+export interface MonitorLog {
   id: string;
-  dayNumber: number;
+  monitor_id: string;
+  monitor?: GeckoUser;
+  camp_id: string;
+  created_by: string;
+  type: MonitorLogType;
   title: string;
-  date?: string;
-  timeSlots: TimeSlot[];
-  createdAt: number;
-  updatedAt: number;
+  content: string;
+  created_at: string;
 }
 
-export interface AppState {
-  schedules: Schedule[];
-  currentScheduleId: string | null;
-  notifications: AppNotification[];
-  lastSync: number;
+// === AUTH ===
+export interface AuthState {
+  user: GeckoUser | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
 }
