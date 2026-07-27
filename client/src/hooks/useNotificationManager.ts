@@ -1,162 +1,238 @@
 import { useEffect, useCallback, useRef } from 'react';
-import { useOfflineStorage } from './useOfflineStorage';
+import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import type { CampDay, Notification } from '@/types';
+import type { AppNotification, NotificationType, GeckoUser } from '@/types';
 
+interface UseNotificationManagerProps {
+  user: GeckoUser | null;
+  onNewNotification?: (n: AppNotification) => void;
+}
 
-export const useNotificationManager = () => {
-  const { getNotifications, updateNotification, saveNotifications } =
-    useOfflineStorage();
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const notificationsSentRef = useRef<Set<string>>(new Set());
+export function useNotificationManager({ user, onNewNotification }: UseNotificationManagerProps) {
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const sentRef = useRef<Set<string>>(new Set());
 
-  // Pedir permissão para notificações
-  const requestNotificationPermission = useCallback(async () => {
-    if (!('Notification' in window)) {
-      console.log('Notificações não suportadas');
-      return false;
-    }
-
-    if (Notification.permission === 'granted') {
-      return true;
-    }
-
+  // ── Pedir permissão browser ──────────────────────────────
+  const requestPermission = useCallback(async () => {
+    if (!('Notification' in window)) return false;
+    if (Notification.permission === 'granted') return true;
     if (Notification.permission !== 'denied') {
-      const permission = await Notification.requestPermission();
-      return permission === 'granted';
+      const p = await Notification.requestPermission();
+      return p === 'granted';
     }
-
     return false;
   }, []);
 
-  // Agendar notificações para um dia
-  const scheduleNotificationsForDay = useCallback(
-    async (day: CampDay) => {
-      const notifications: Notification[] = [];
+  // ── Enviar notificação (browser + toast) ─────────────────
+  const sendBrowserNotification = useCallback((title: string, body: string, type: NotificationType) => {
+    const icons: Record<string, string> = {
+      warning: '⚠️', success: '✅', error: '❌',
+      chat: '💬', schedule: '📅', activity: '🏕️',
+      director_alert: '📢', info: 'ℹ️',
+    };
+    const icon = icons[type] ?? 'ℹ️';
 
-      day.timeSlots.forEach((slot) => {
-        // Parse da hora (HH:MM)
-        const [hours, minutes] = slot.time.split(':').map(Number);
-        const now = new Date();
-        const slotDate = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate(),
-          hours,
-          minutes
-        );
-
-        // Se a hora já passou hoje, agendar para amanhã
-        if (slotDate < now) {
-          slotDate.setDate(slotDate.getDate() + 1);
-        }
-
-        // Notificação 10 minutos antes
-        const notificationTime = new Date(slotDate.getTime() - 10 * 60 * 1000);
-
-        const notification: Notification = {
-          id: `${day.id}-${slot.id}`,
-          dayId: day.id,
-          timeSlotId: slot.id,
-          title: `⏰ ${slot.time} - ${slot.title}`,
-          body: slot.description,
-          scheduledTime: notificationTime.getTime(),
-          sent: false,
-          createdAt: Date.now(),
-        };
-
-        notifications.push(notification);
-      });
-
-      await saveNotifications(notifications);
-      return notifications;
-    },
-    [saveNotifications]
-  );
-
-  // Enviar notificação
-  const sendNotification = useCallback(async (notification: Notification) => {
-    try {
-      // Verificar se já foi enviada nesta sessão
-      if (notificationsSentRef.current.has(notification.id)) {
-        return;
-      }
-
-      // Usar Notification API
-      if (Notification.permission === 'granted') {
-        const notificationOptions: NotificationOptions = {
-          body: notification.body,
-          icon: '/manus-storage/camp-logo_318861f1.png',
-          badge: '/manus-storage/camp-logo_318861f1.png',
-          tag: notification.id,
-          requireInteraction: true,
-        };
-        // @ts-ignore - vibrate é suportado em alguns navegadores
-        notificationOptions.vibrate = [200, 100, 200];
-        new Notification(notification.title, notificationOptions);
-
-        // Toast como fallback
-        toast.success(notification.title, {
-          description: notification.body,
-          duration: 10000,
-        });
-      } else {
-        // Apenas toast se notificações não estão permitidas
-        toast.info(notification.title, {
-          description: notification.body,
-          duration: 10000,
-        });
-      }
-
-      // Marcar como enviada
-      notificationsSentRef.current.add(notification.id);
-      notification.sent = true;
-      await updateNotification(notification);
-    } catch (error) {
-      console.error('Erro ao enviar notificação:', error);
+    if (Notification.permission === 'granted') {
+      new Notification(`${icon} ${title}`, { body, tag: title });
     }
-  }, [updateNotification]);
 
-  // Verificar e enviar notificações pendentes
-  const checkAndSendNotifications = useCallback(async () => {
-    try {
-      const notifications = await getNotifications();
-      const now = Date.now();
+    // Toast com estilo por tipo
+    const toastFn =
+      type === 'success' ? toast.success :
+      type === 'error' ? toast.error :
+      type === 'warning' || type === 'director_alert' ? toast.warning :
+      toast.info;
 
-      for (const notification of notifications) {
-        // Se é hora de enviar e ainda não foi enviada
-        if (notification.scheduledTime <= now && !notification.sent) {
-          await sendNotification(notification);
+    toastFn(`${icon} ${title}`, { description: body, duration: 8000 });
+  }, []);
+
+  // ── Criar notificação na DB (para um user específico) ────
+  const createNotification = useCallback(async (
+    userId: string,
+    title: string,
+    message: string,
+    type: NotificationType,
+    extras?: { schedule_id?: string; time_slot_id?: string; camp_id?: string }
+  ) => {
+    await supabase.from('notifications').insert({
+      user_id: userId,
+      title,
+      message,
+      type,
+      camp_id: extras?.camp_id ?? user?.camp_id,
+      schedule_id: extras?.schedule_id,
+      time_slot_id: extras?.time_slot_id,
+      read: false,
+    });
+  }, [user]);
+
+  // ── Notificar todos os monitores do camp ─────────────────
+  const notifyAllMonitors = useCallback(async (
+    title: string,
+    message: string,
+    type: NotificationType,
+    extras?: { schedule_id?: string; time_slot_id?: string }
+  ) => {
+    if (!user?.camp_id) return;
+    const { data: monitors } = await supabase
+      .from('users')
+      .select('id')
+      .eq('camp_id', user.camp_id)
+      .eq('role', 'monitor');
+
+    if (!monitors) return;
+    const inserts = monitors.map((m) => ({
+      user_id: m.id,
+      title,
+      message,
+      type,
+      camp_id: user.camp_id,
+      schedule_id: extras?.schedule_id ?? null,
+      time_slot_id: extras?.time_slot_id ?? null,
+      read: false,
+    }));
+    await supabase.from('notifications').insert(inserts);
+  }, [user]);
+
+  // ── Notificar director do camp ───────────────────────────
+  const notifyDirector = useCallback(async (
+    title: string,
+    message: string,
+    type: NotificationType,
+    extras?: { schedule_id?: string; time_slot_id?: string }
+  ) => {
+    if (!user?.camp_id) return;
+    const { data: directors } = await supabase
+      .from('users')
+      .select('id')
+      .eq('camp_id', user.camp_id)
+      .eq('role', 'director');
+
+    if (!directors) return;
+    const inserts = directors.map((d) => ({
+      user_id: d.id,
+      title,
+      message,
+      type,
+      camp_id: user.camp_id,
+      schedule_id: extras?.schedule_id ?? null,
+      time_slot_id: extras?.time_slot_id ?? null,
+      read: false,
+    }));
+    await supabase.from('notifications').insert(inserts);
+  }, [user]);
+
+  // ── Verificar time slots e disparar 10min antes ──────────
+  const checkUpcomingSlots = useCallback(async () => {
+    if (!user?.camp_id) return;
+
+    const today = new Date().toISOString().split('T')[0];
+    const { data: schedules } = await supabase
+      .from('schedules')
+      .select('id, time_slots(*)')
+      .eq('camp_id', user.camp_id)
+      .eq('date', today);
+
+    if (!schedules) return;
+
+    const now = new Date();
+    const in10 = new Date(now.getTime() + 10 * 60 * 1000);
+
+    for (const schedule of schedules) {
+      const slots = (schedule.time_slots as any[]) ?? [];
+      for (const slot of slots) {
+        if (slot.completed) continue;
+
+        const [h, m] = slot.time.split(':').map(Number);
+        const slotDate = new Date();
+        slotDate.setHours(h, m, 0, 0);
+
+        // Janela: entre agora e +10min
+        const key = `slot-${slot.id}`;
+        if (slotDate > now && slotDate <= in10 && !sentRef.current.has(key)) {
+          sentRef.current.add(key);
+
+          const isAssigned = slot.assignees?.includes(user.name) ||
+                             slot.assignees?.includes(user.id);
+
+          if (isAssigned) {
+            // Notificação destacada para o responsável
+            sendBrowserNotification(
+              `⭐ És responsável: ${slot.title}`,
+              `Começa às ${slot.time} — ${slot.description}`,
+              'warning'
+            );
+            await createNotification(
+              user.id,
+              `⭐ És responsável: ${slot.title}`,
+              `Começa às ${slot.time} — ${slot.description}`,
+              'warning',
+              { schedule_id: schedule.id, time_slot_id: slot.id }
+            );
+          } else {
+            // Notificação normal para todos
+            sendBrowserNotification(
+              `⏰ Em 10 min: ${slot.title}`,
+              `Às ${slot.time} — ${slot.description}`,
+              'info'
+            );
+            await createNotification(
+              user.id,
+              `⏰ Em 10 min: ${slot.title}`,
+              `Às ${slot.time} — ${slot.description}`,
+              'info',
+              { schedule_id: schedule.id, time_slot_id: slot.id }
+            );
+          }
         }
       }
-    } catch (error) {
-      console.error('Erro ao verificar notificações:', error);
     }
-  }, [getNotifications, sendNotification]);
+  }, [user, sendBrowserNotification, createNotification]);
 
-  // Configurar verificação periódica
+  // ── Iniciar intervalo de verificação ────────────────────
   useEffect(() => {
-    // Pedir permissão ao montar
-    requestNotificationPermission();
+    if (!user) return;
+    requestPermission();
 
-    // Verificar imediatamente
-    checkAndSendNotifications();
-
-    // Verificar a cada minuto
-    intervalRef.current = setInterval(() => {
-      checkAndSendNotifications();
-    }, 60 * 1000);
+    // Verificar imediatamente e depois a cada minuto
+    checkUpcomingSlots();
+    intervalRef.current = setInterval(checkUpcomingSlots, 60 * 1000);
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [checkAndSendNotifications, requestNotificationPermission]);
+  }, [user, checkUpcomingSlots, requestPermission]);
+
+  // ── Realtime: ouvir notificações novas na DB ─────────────
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`notifications-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const n = payload.new as AppNotification;
+          onNewNotification?.(n);
+          // Mostrar toast para notificações vindas de outros (não as que criámos nós)
+          sendBrowserNotification(n.title, n.message, n.type);
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user, onNewNotification, sendBrowserNotification]);
 
   return {
-    scheduleNotificationsForDay,
-    checkAndSendNotifications,
-    requestNotificationPermission,
+    notifyAllMonitors,
+    notifyDirector,
+    createNotification,
+    sendBrowserNotification,
   };
-};
+}
